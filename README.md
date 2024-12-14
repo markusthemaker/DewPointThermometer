@@ -92,7 +92,7 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 
 | ![Dew Point Thermometer Prototype Wiring](./img/3.jpeg) | 
 |:--:| 
-| * Left: Wiring & Prototype Testing. Top Right: LCD Display Testing. Bottom Right: Assembled Components * |
+| *Left: Wiring & Prototype Testing. Top Right: LCD Display Testing. Bottom Right: Assembled Components* |
 
 **SHT85 to ESP32 (Both Stations, 3.3V):**
 | SHT85 Pin | ESP32 Pin | Notes        |
@@ -183,7 +183,9 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
 
 ## Housing
 
-![Dew Point Thermometer Prototype Wiring](./img/4.jpeg)
+| ![Dew Point Thermometer Prototype Housing](./img/4.jpeg) | 
+|:--:| 
+| *Top Left: Custom Indoor Housing with LED, LCD, DC & Ethernet connector, air vents. Top Right: Small cut-out for sensor. Bottom Left: Mounting via spacers and (hot) glue. Bottom right: Outdoor FTA Housing* |
 
 - **Outdoor Unit:**  
   Weatherproof enclosure, ensure airflow for accurate humidity readings.
