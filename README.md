@@ -232,7 +232,7 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
    - Sensor and LoRa reinitialized after repeated failures.
   
 4. **Cloud Upload (Optional):**
-   - If connected to wifi or Ethernet, indoor uploads data to Adafruit IO every 5 mins:
+   - If connected to wifi or Ethernet, the indoor unit uploads data to Adafruit IO every 5 mins:
 
 ![Dew Point Thermometer Adafruit IO](./img/Screenshot.png) 
 
