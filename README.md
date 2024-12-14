@@ -18,7 +18,7 @@
 
 ## Introduction and Motivation
 
-This project implements a robust dew point thermometer system with **indoor** and **outdoor** stations. The **outdoor station** measures temperature/humidity with an SHT85 sensor and transmits data via LoRa. The **indoor station** receives this data, measures its own conditions, calculates both indoor and outdoor dew points, and determines if airing the house out would help control indoor humidity. An LED indicator provides a quick visual guide for whether or not to ventilate.
+This project implements a robust dew point thermometer system with **indoor** and **outdoor** stations. The **outdoor station** measures temperature/humidity with an SHT85 sensor and transmits data via LoRa. The **indoor station** receives this data, measures its own conditions, calculates both indoor and outdoor dew points, and determines if airing the house out would help control indoor humidity. An LED indicator provides a quick visual guide for whether or not to ventilate, and a LCD display shows the current measured and calculated values for indoor & outdoor. The system is connected to Adafruit Cloud for tracking and graphing data. 
 
 By employing a unique LoRa sync word, CRC checks, ensuring network connectivity before I/O operations, and using timed intervals for tasks, the system remains responsive and reliable—even in noisy RF environments or when the Ethernet cable is disconnected. Additionally, a logic level converter (level shifter) is required for the LCD if it operates at 5V while the rest of the system runs at 3.3V.
 
@@ -136,6 +136,8 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 |----------------|-----------|--------------------------------|
 | RED_LED_PIN    | GPIO25    | Red LED with resistor, 3.3V logic |
 | GREEN_LED_PIN  | GPIO26    | Green LED with resistor, 3.3V logic |
+
+![Dew Point Thermometer Prototype Wiring](./img/1.jpeg)
 
 ## Frequency, Sync Word, and CRC
 
