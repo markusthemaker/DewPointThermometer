@@ -1,6 +1,6 @@
 # Dew Point Thermometer with LoRa and Internet Connectivity
 
-![Dew Point Thermometer](./img/7.jpeg)
+![Dew Point Thermometer](./img/IMG_2939.jpeg)
 
 ## Table of Contents
 - [Introduction and Motivation](#introduction-and-motivation)
