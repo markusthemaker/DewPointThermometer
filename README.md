@@ -90,7 +90,9 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 
 **Note:** The ESP32 and LoRa, SHT85, Ethernet modules operate at 3.3V logic. The LCD typically requires 5V and is not 3.3V tolerant on I2C lines. Use a bidirectional logic level converter for I2C SDA and SCL lines between ESP32 (3.3V) and LCD (5V).
 
-![Dew Point Thermometer Prototype Wiring](./img/3.jpeg)
+| ![Dew Point Thermometer Prototype Wiring](./img/3.jpeg) | 
+|:--:| 
+| * Left: Wiring & Prototype Testing. Top Right: LCD Display Testing. Bottom Right: Assembled Components * |
 
 **SHT85 to ESP32 (Both Stations, 3.3V):**
 | SHT85 Pin | ESP32 Pin | Notes        |
