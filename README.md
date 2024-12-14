@@ -208,11 +208,12 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
 
 - **Outdoor Unit:**  
   Weatherproof enclosure, ensure airflow for accurate humidity readings.
-  Good quality housing: TFA Dostmann Potective Cover for Transmitter 
+  Good quality housing: TFA Dostmann Potective Cover for Transmitter. 
 
 - **Indoor Unit:**
-  Indoor Housing was designed using CAD Onshape. Link to my [Onshape design](https://cad.onshape.com/documents/c48dac3dd317ad2774113701/w/70a39c90a07f91a9a65c84c1/e/97dbad388adcff361e7d9df7) to my design.  
-  [3D STL file](IndoorHousing.stl)
+  - Indoor Housing was designed using CAD Onshape.
+  - Link to my [Onshape design](https://cad.onshape.com/documents/c48dac3dd317ad2774113701/w/70a39c90a07f91a9a65c84c1/e/97dbad388adcff361e7d9df7) to my design.  
+  - [3D STL file for printing](IndoorHousing.stl)
 
 
 ## Usage
