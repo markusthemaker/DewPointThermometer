@@ -18,22 +18,42 @@
 
 ## Introduction and Motivation
 
-This project implements a robust dew point thermometer system with **indoor** and **outdoor** stations. The **outdoor station** measures temperature/humidity with an SHT85 sensor and transmits data via LoRa. The **indoor station** receives this data, measures its own conditions, calculates both indoor and outdoor dew points, and determines if airing the house out would help control indoor humidity. An LED indicator provides a quick visual guide for whether or not to ventilate, and a LCD display shows the current measured and calculated values for indoor & outdoor. The system is connected to Adafruit Cloud for tracking and graphing data. 
+In atmospheric science and indoor air quality management, the **dew point** is a critical metric. It represents the temperature at which the water vapor in the air becomes saturated and begins to condense into liquid water. A higher dew point indicates more moisture in the air, often leading to discomfort, potential mold growth, and structural damage. By understanding and controlling dew point, one can maintain healthier, more comfortable indoor conditions, prevent condensation-related issues, and optimize energy usage for heating and cooling. Monitoring dew point is thus invaluable in achieving both human comfort and long-term preservation of building materials.
+
+This project implements a robust dew point thermometer system with **indoor** and **outdoor** stations. The **outdoor station** measures temperature/humidity with an SHT85 sensor and transmits data via LoRa. The **indoor station** receives this data, measures its own conditions, calculates both indoor and outdoor dew points, and determines if airing the house out would help control indoor humidity or not. An LED indicator provides a quick visual guide for whether or not to ventilate, and a LCD display shows the current measured and calculated values for indoor & outdoor. The system is connected to Adafruit Cloud for tracking and graphing data. 
 
 By employing a unique LoRa sync word, CRC checks, ensuring network connectivity before I/O operations, and using timed intervals for tasks, the system remains responsive and reliable—even in noisy RF environments or when the Ethernet cable is disconnected. Additionally, a logic level converter (level shifter) is required for the LCD if it operates at 5V while the rest of the system runs at 3.3V.
 
 ## Features
 
 - **Indoor/Outdoor Measurements:**  
-  Indoor station monitors its own temp/hum, receives outdoor data for comparative dew point analysis.
+  - Indoor station monitors its own temp/hum, receives outdoor data for comparative dew point analysis.
 
-- **Dew Point Calculation & Humidity Control:**  
-  Compares indoor and outdoor dew points to assess the benefit of airing out to reduce indoor humidity.
+- **Scientific Dew Point Calculation Using the Magnus Approximation:**  
+  The dew point can be approximated using the Magnus–Tetens formula, which provides a practical way to compute dew point (`D`) based on temperature (`T`) and relative humidity (`H`). Different constants are used depending on whether the temperature is above or below 0°C:
+
+     ```cpp
+  double calculateDewPoint(double temp, double hum) {
+  double a, b;
+  if (temp >= 0.0) {
+    a = 17.62; b = 243.12;
+  } else {
+    a = 22.46; b = 272.62;
+  }
+  double rh = hum / 100.0;
+  double alpha = log(rh) + (a * temp / (b + temp));
+  return (b * alpha) / (a - alpha);
+  }
+     ```
+ 
+
+- **Humidity Control:**  
+  - Compares indoor and outdoor dew points to assess the benefit of airing out to reduce indoor humidity.
 
 - **LED Indicators for Ventilation:**
-  - **Green LED:** Outdoor conditions favor lowering indoor humidity by airing.
+  - **Green LED:** Outdoor conditions favor lowering indoor humidity by airing (delta dew point >5C).
   - **Red LED:** No benefit from airing.
-  - **Off:** Borderline conditions, marginal benefit.
+  - **Off:** Borderline conditions, marginal benefit (delta 0-5C).
 
 - **Robust LoRa Communication:**
   - Unique sync word, CRC for reliable data in noisy environments.
@@ -185,7 +205,7 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
 
 | ![Dew Point Thermometer Prototype Housing](./img/4.jpeg) | 
 |:--:| 
-| *Top Left: Custom Indoor Housing with LED, LCD, DC & Ethernet connector, air vents. Top Right: Small cut-out for sensor. Bottom Left: Mounting via spacers and (hot) glue. Bottom right: Outdoor FTA Housing* |
+| *Top Left: Custom Indoor Housing with LED, LCD, DC & Ethernet connector, air vents. Top Right: Small cut-out for sensor. Bottom Left: Mounting via spacers and (hot) glue. Bottom right: Outdoor FTA Housing. For both, indoor and outdoor housing, the DC connector is connected to a 0.2A fuse for safety* |
 
 - **Outdoor Unit:**  
   Weatherproof enclosure, ensure airflow for accurate humidity readings.
