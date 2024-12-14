@@ -210,7 +210,8 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
   Weatherproof enclosure, ensure airflow for accurate humidity readings.
   Good quality housing: TFA Dostmann Potective Cover for Transmitter 
 
-- **Indoor Unit:**  
+- **Indoor Unit:**
+  Indoor Housing was designed using CAD Onshape. Link to my [Onshape design](https://github.com/sandeepmistry/arduino-LoRa) to my design.  
   [3D STL file](IndoorHousing.stl)
 
 
