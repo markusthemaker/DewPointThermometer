@@ -196,8 +196,8 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
      ```
 
 4. **Upload Code:**
-   - Upload `OutdoorStation.ino` to outdoor ESP32.
-   - Upload `IndoorStation.ino` to indoor ESP32.
+   - Upload [OutdoorStation.ino](OutdoorStation.ino) to outdoor ESP32.
+   - Upload [IndoorStation.ino](IndoorStation.ino) to indoor ESP32.
    - Ensure same frequency & sync word on both units.
 
 ## Housing
