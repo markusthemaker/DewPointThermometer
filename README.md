@@ -10,10 +10,9 @@
 - [Wiring](#wiring)
 - [Frequency, Sync Word, and CRC](#frequency-sync-word-and-crc)
 - [Software Setup](#software-setup)
+- [Housing](#housing)
 - [Usage](#usage)
 - [Maintenance and Troubleshooting](#maintenance-and-troubleshooting)
-- [Power and Housing](#power-and-housing)
-- [Future Enhancements](#future-enhancements)
 - [License](#license)
 
 ## Introduction and Motivation
