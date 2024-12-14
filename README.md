@@ -90,6 +90,8 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 
 **Note:** The ESP32 and LoRa, SHT85, Ethernet modules operate at 3.3V logic. The LCD typically requires 5V and is not 3.3V tolerant on I2C lines. Use a bidirectional logic level converter for I2C SDA and SCL lines between ESP32 (3.3V) and LCD (5V).
 
+![Dew Point Thermometer Prototype Wiring](./img/3.jpeg)
+
 **SHT85 to ESP32 (Both Stations, 3.3V):**
 | SHT85 Pin | ESP32 Pin | Notes        |
 |-----------|-----------|--------------|
@@ -137,8 +139,6 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 | RED_LED_PIN    | GPIO25    | Red LED with resistor, 3.3V logic |
 | GREEN_LED_PIN  | GPIO26    | Green LED with resistor, 3.3V logic |
 
-![Dew Point Thermometer Prototype Wiring](./img/3.jpeg)
-
 ## Frequency, Sync Word, and CRC
 
 ```cpp
@@ -168,6 +168,8 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
      ```cpp
      const char* ssid = "YourWiFiSSID";
      const char* password = "YourWiFiPassword";
+     ```
+     ```cpp
      #define IO_USERNAME "your_adafruit_io_username"
      #define IO_KEY "your_adafruit_io_key"
      ```
@@ -176,6 +178,18 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
    - Upload `OutdoorStation.ino` to outdoor ESP32.
    - Upload `IndoorStation.ino` to indoor ESP32.
    - Ensure same frequency & sync word on both units.
+
+## Housing
+
+![Dew Point Thermometer Prototype Wiring](./img/4.jpeg)
+
+- **Outdoor Unit:**  
+  Weatherproof enclosure, ensure airflow for accurate humidity readings.
+  Good quality housing: TFA Dostmann Potective Cover for Transmitter 
+
+- **Indoor Unit:**  
+  [3D STL file](IndoorCase.stl)
+
 
 ## Usage
 
@@ -213,30 +227,7 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
   Check Wi-Fi credentials or Ethernet cable and DHCP.  
   Code retries periodically without blocking main loop.
 
-## Power and Housing
 
-- **Outdoor Unit:**  
-  Weatherproof enclosure, ensure airflow for accurate humidity readings.
-  Good quality housing: TFA Dostmann Potective Cover for Transmitter 
-
-- **Indoor Unit:**  
-  3D files available. 
-
-![Dew Point Thermometer Prototype Wiring](./img/4.jpeg)
-
-## Future Enhancements
-
-- **Security:**  
-  Consider encryption for sensitive data.
-
-- **Power Saving:**
-  Sleep modes for battery-powered outdoor units.
-
-- **Data Logging:**
-  Add local storage (SD card) for offline analysis.
-
-- **Integration:**
-  Interface with smart home systems for automated ventilation.
 
 ## License
 
