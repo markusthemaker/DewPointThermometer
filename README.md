@@ -188,7 +188,7 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
   Good quality housing: TFA Dostmann Potective Cover for Transmitter 
 
 - **Indoor Unit:**  
-  [3D STL file](IndoorCase.stl)
+  [3D STL file](IndoorHousing.stl)
 
 
 ## Usage
