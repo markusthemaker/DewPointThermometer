@@ -113,52 +113,71 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 |:--:| 
 | *Left: Wiring & Prototype Testing. Top Right: LCD Display Testing. Bottom Right: Assembled Components* |
 
-**SHT85 to ESP32 (Both Stations, 3.3V):**
-| SHT85 Pin | ESP32 Pin | Notes        |
-|-----------|-----------|--------------|
-| SCL       | GPIO22    | I2C Clock (3.3V) |
-| SDA       | GPIO21    | I2C Data (3.3V)  |
-| VCC       | 3.3V      | Power        |
-| GND       | GND       | Ground       |
+## Wiring
 
-**LoRa Module to ESP32 (3.3V):**
-| LoRa Pin | ESP32 Pin | Notes                      |
-|----------|-----------|----------------------------|
-| SCK      | GPIO18    | SPI Clock (shared)         |
-| MISO     | GPIO19    | SPI MISO (shared)          |
-| MOSI     | GPIO23    | SPI MOSI (shared)          |
-| NSS (CS) | GPIO5     | LoRa Chip Select           |
-| RST      | GPIO27    | LoRa Reset                 |
-| DIO0     | -1 or 33  | Not used indoor or GPIO33 if used outdoor |
-| VCC      | 3.3V      | Power                      |
-| GND      | GND       | Ground                     |
+Below are the wiring instructions for both stations. Use short, direct references and keep related signals grouped. All components except the LCD and LEDs run at 3.3V logic. The LCD is 5V and requires a logic level converter for the I2C lines.
 
-**LCD (I2C) to ESP32 via Level Shifter:**
-- The LCD requires 5V power and 5V logic on SDA/SCL.  
-- ESP32 runs at 3.3V logic. Use a bidirectional logic level converter on SDA and SCL lines.
+### Outdoor Station Wiring
 
-| LCD Pin | Level Shifter | ESP32 Pin | Notes                       |
-|---------|---------------|-----------|-----------------------------|
-| SDA (5V)| ↔ SDA (3.3V)  | GPIO21    | I2C Data through level shifter |
-| SCL (5V)| ↔ SCL (3.3V)  | GPIO22    | I2C Clock through level shifter|
-| VCC     | 5V            | -         | LCD Power (5V)              |
-| GND     | GND           | -         | Ground shared               |
+**SHT85 Sensor (3.3V I2C):**
+- SCL -> ESP32 GPIO22 (I2C Clock)
+- SDA -> ESP32 GPIO21 (I2C Data)
+- VCC -> 3.3V
+- GND -> GND
 
-**Ethernet (W5500) to ESP32 (Optional, 3.3V):**
-| W5500 Pin | ESP32 Pin | Notes           |
-|-----------|-----------|-----------------|
-| SCK       | GPIO18    | SPI Clock       |
-| MISO      | GPIO19    | SPI MISO        |
-| MOSI      | GPIO23    | SPI MOSI        |
-| CS        | GPIO4     | W5500 CS        |
-| VCC       | 3.3V      | Power           |
-| GND       | GND       | Ground          |
+**LoRa Module (3.3V SPI):**
+- SCK -> ESP32 GPIO18
+- MISO -> ESP32 GPIO19
+- MOSI -> ESP32 GPIO23
+- NSS (CS) -> ESP32 GPIO5
+- RST -> ESP32 GPIO27
+- VCC -> 3.3V
+- GND -> GND
+
+*(DIO0 is not used on the indoor station, but on the outdoor station you might connect it to an available GPIO if needed.)*
+
+### Indoor Station Wiring
+
+**SHT85 Sensor (3.3V I2C):**
+- SCL -> ESP32 GPIO22 (I2C Clock)
+- SDA -> ESP32 GPIO21 (I2C Data)
+- VCC -> 3.3V
+- GND -> GND
+
+**LoRa Module (3.3V SPI):**
+- SCK -> ESP32 GPIO18
+- MISO -> ESP32 GPIO19
+- MOSI -> ESP32 GPIO23
+- NSS (CS) -> ESP32 GPIO5
+- RST -> ESP32 GPIO27
+- VCC -> 3.3V
+- GND -> GND
+
+**LCD (5V I2C, with Level Shifter):**
+- ESP32 GPIO21 (SDA) -> Level Shifter (3.3V side)
+- ESP32 GPIO22 (SCL) -> Level Shifter (3.3V side)
+- Level Shifter (5V side) -> LCD SDA/SCL
+- LCD VCC -> 5V
+- LCD GND -> GND
+
+Make sure the level shifter is bidirectional and designed for I2C signals. Connect its power pins:
+- Level Shifter LV (low voltage side) -> 3.3V from ESP32
+- Level Shifter HV (high voltage side) -> 5V
+- GND shared among ESP32, LCD, and Level Shifter
+
+**Ethernet (W5500) Optional (3.3V SPI):**
+- SCK -> ESP32 GPIO18 (shared SPI)
+- MISO -> ESP32 GPIO19
+- MOSI -> ESP32 GPIO23
+- CS -> ESP32 GPIO4
+- VCC -> 3.3V
+- GND -> GND
 
 **LEDs (3.3V):**
-| LED Pin        | ESP32 Pin | Notes                         |
-|----------------|-----------|--------------------------------|
-| RED_LED_PIN    | GPIO25    | Red LED with resistor, 3.3V logic |
-| GREEN_LED_PIN  | GPIO26    | Green LED with resistor, 3.3V logic |
+- RED_LED_PIN (GPIO25) -> Red LED + resistor -> GND
+- GREEN_LED_PIN (GPIO26) -> Green LED + resistor -> GND
+
+Keep wiring as short as possible, ensure common ground among all devices, and double-check voltage levels before powering up. For the LCD, ensure the logic signals from the ESP32 go through the level shifter for stable 5V I2C operation.
 
 ## Frequency, Sync Word, and CRC
 
