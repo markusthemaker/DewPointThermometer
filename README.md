@@ -18,80 +18,87 @@
 
 ## Introduction and Motivation
 
-This project builds a robust dew point thermometer system with **indoor** and **outdoor** stations. The **outdoor station** measures temperature/humidity with an SHT85 sensor and sends data over LoRa. The **indoor station** receives this data, measures its own indoor conditions, calculates dew points, and determines if airing the house out would help reduce indoor humidity. An LED indicator provides a quick visual guide for ventilation decisions.
+This project implements a robust dew point thermometer system with **indoor** and **outdoor** stations. The **outdoor station** measures temperature/humidity with an SHT85 sensor and transmits data via LoRa. The **indoor station** receives this data, measures its own conditions, calculates both indoor and outdoor dew points, and determines if airing the house out would help control indoor humidity. An LED indicator provides a quick visual guide for whether or not to ventilate.
 
-By using a unique LoRa sync word, enabling CRC, verifying network connectivity before I/O operations, and employing non-blocking timed intervals, the system remains responsive and reliable even in noisy RF conditions or when Ethernet is disconnected.
+By employing a unique LoRa sync word, CRC checks, ensuring network connectivity before I/O operations, and using timed intervals for tasks, the system remains responsive and reliable—even in noisy RF environments or when the Ethernet cable is disconnected. Additionally, a logic level converter (level shifter) is required for the LCD if it operates at 5V while the rest of the system runs at 3.3V.
 
 ## Features
 
 - **Indoor/Outdoor Measurements:**  
-  Indoor station measures its own temp/hum and receives outdoor data for comparative dew point analysis.
+  Indoor station monitors its own temp/hum, receives outdoor data for comparative dew point analysis.
 
 - **Dew Point Calculation & Humidity Control:**  
-  Compares indoor and outdoor dew points to determine if opening windows helps lower indoor humidity.
+  Compares indoor and outdoor dew points to assess the benefit of airing out to reduce indoor humidity.
 
 - **LED Indicators for Ventilation:**
-  - **Green LED:** Outdoor conditions favor reducing indoor humidity by airing out.
-  - **Red LED:** No benefit from airing out.
-  - **Off:** Borderline conditions with marginal benefit.
+  - **Green LED:** Outdoor conditions favor lowering indoor humidity by airing.
+  - **Red LED:** No benefit from airing.
+  - **Off:** Borderline conditions, marginal benefit.
 
 - **Robust LoRa Communication:**
-  - Unique sync word and CRC ensure data integrity in noisy environments.
-  - Uses 868.1 MHz (within EU ISM band).
+  - Unique sync word, CRC for reliable data in noisy environments.
+  - Operates at 868.1 MHz (EU ISM band).
 
 - **Non-Blocking, Responsive Operation:**
   - Timed intervals for sensor reads, LCD updates, Adafruit IO uploads.
-  - Avoids blocking during network interruptions.
+  - Avoids stalling during network issues.
 
 - **Failure Recovery:**
-  - Reinitializes SHT85 and LoRa after consecutive failures.
-  - Resets outdoor values if no data arrives for 1 minute.
+  - Reinitializes SHT85 and LoRa after multiple failures.
+  - Resets outdoor values if no data for 1 minute.
 
 - **Optional Cloud Connectivity (Adafruit IO):**
-  - Uploads data every 5 minutes if connected to Wi-Fi or Ethernet.
+  - Uploads data every 5 minutes if Wi-Fi or Ethernet is connected.
   - Skips uploads gracefully if disconnected.
 
 ## Design Principles
 
 1. **Reliability in Noise:**  
-   Unique sync word and CRC filters interference; checks network before I/O ops.
+   - Unique sync word and CRC filter interference.
+   - Verifies network connectivity before I/O ops.
 
 2. **Non-Blocking Operation:**  
-   Timed intervals ensure system never stalls.
+   - Uses timed intervals to prevent system stalls.
 
 3. **Error Handling & Recovery:**  
-   Reinitializes sensor/LoRa modules on repeated failures.
+   - Reinitializes sensors and LoRa on failures.
+   - Clears old outdoor data if no updates in 1 minute.
 
 4. **Modularity & Maintainability:**  
-   Separate indoor/outdoor logic; clear code organization.
+   - Separate indoor/outdoor code.
+   - Clear logic and timing-based structure.
 
 ## Hardware Components
 
 ### Outdoor Station
 - ESP32 (or similar MCU)
-- SHT85 Temp/Hum Sensor
-- LoRa Module (SX1276/SX1278)
-- Stable 3.3V power supply
+- SHT85 Temp/Hum Sensor (3.3V)
+- LoRa Module (SX1276/SX1278, 3.3V)
+- Stable 3.3V power supply or use a DC-DC step down module
 
 ### Indoor Station
-- ESP32 (Wi-Fi and/or W5500 Ethernet)
-- SHT85 Temp/Hum Sensor (indoor)
-- LoRa Module (matching frequency/sync word)
-- 20x4 I2C LCD Display
-- Bi-Color LED or separate Red/Green LEDs
-- Stable 3.3V power supply
+- ESP32 (Wi-Fi and/or W5500 Ethernet, all 3.3V)
+- SHT85 Temp/Hum Sensor (3.3V)
+- LoRa Module (3.3V)
+- 20x4 I2C LCD Display (requires 5V)
+- Bi-Color LED or separate Red/Green LEDs (3.3V via PWM)
+- **Logic Level Converter for LCD I2C Lines**  
+  (The LCD is powered at 5V, while ESP32 I2C lines are 3.3V. A level shifter ensures proper logic levels.)
+- Stable 5V supply via DC-DC step down module. For 3.3V, sinmply use ESP 3.3V out. 
 
 ## Wiring
 
-**SHT85 to ESP32 (Both Stations):**
+**Note:** The ESP32 and LoRa, SHT85, Ethernet modules operate at 3.3V logic. The LCD typically requires 5V and is not 3.3V tolerant on I2C lines. Use a bidirectional logic level converter for I2C SDA and SCL lines between ESP32 (3.3V) and LCD (5V).
+
+**SHT85 to ESP32 (Both Stations, 3.3V):**
 | SHT85 Pin | ESP32 Pin | Notes        |
 |-----------|-----------|--------------|
-| SCL       | GPIO22    | I2C Clock    |
-| SDA       | GPIO21    | I2C Data     |
+| SCL       | GPIO22    | I2C Clock (3.3V) |
+| SDA       | GPIO21    | I2C Data (3.3V)  |
 | VCC       | 3.3V      | Power        |
 | GND       | GND       | Ground       |
 
-**LoRa Module to ESP32:**
+**LoRa Module to ESP32 (3.3V):**
 | LoRa Pin | ESP32 Pin | Notes                      |
 |----------|-----------|----------------------------|
 | SCK      | GPIO18    | SPI Clock (shared)         |
@@ -99,52 +106,44 @@ By using a unique LoRa sync word, enabling CRC, verifying network connectivity b
 | MOSI     | GPIO23    | SPI MOSI (shared)          |
 | NSS (CS) | GPIO5     | LoRa Chip Select           |
 | RST      | GPIO27    | LoRa Reset                 |
-| DIO0     | -1 or 33  | Not used (indoor), 33 if used outdoor |
+| DIO0     | -1 or 33  | Not used indoor or GPIO33 if used outdoor |
 | VCC      | 3.3V      | Power                      |
 | GND      | GND       | Ground                     |
 
-**LCD (I2C) to ESP32 (Indoor):**
-| LCD Pin | ESP32 Pin | Notes    |
-|---------|-----------|----------|
-| SDA     | GPIO21    | I2C Data |
-| SCL     | GPIO22    | I2C Clock|
-| VCC     | 5V/3.3V   | Power    |
-| GND     | GND       | Ground   |
+**LCD (I2C) to ESP32 via Level Shifter:**
+- The LCD requires 5V power and 5V logic on SDA/SCL.  
+- ESP32 runs at 3.3V logic. Use a bidirectional logic level converter on SDA and SCL lines.
 
-**Ethernet (W5500) to ESP32 (Optional, Indoor):**
+| LCD Pin | Level Shifter | ESP32 Pin | Notes                       |
+|---------|---------------|-----------|-----------------------------|
+| SDA (5V)| ↔ SDA (3.3V)  | GPIO21    | I2C Data through level shifter |
+| SCL (5V)| ↔ SCL (3.3V)  | GPIO22    | I2C Clock through level shifter|
+| VCC     | 5V            | -         | LCD Power (5V)              |
+| GND     | GND           | -         | Ground shared               |
+
+**Ethernet (W5500) to ESP32 (Optional, 3.3V):**
 | W5500 Pin | ESP32 Pin | Notes           |
 |-----------|-----------|-----------------|
 | SCK       | GPIO18    | SPI Clock       |
 | MISO      | GPIO19    | SPI MISO        |
 | MOSI      | GPIO23    | SPI MOSI        |
-| CS        | GPIO4     | W5500 Chip Select|
+| CS        | GPIO4     | W5500 CS        |
 | VCC       | 3.3V      | Power           |
 | GND       | GND       | Ground          |
 
-**LEDs:**
-| LED Pin        | ESP32 Pin | Notes                        |
-|----------------|-----------|------------------------------|
-| RED_LED_PIN    | GPIO25    | Red LED (Indicator)          |
-| GREEN_LED_PIN  | GPIO26    | Green LED (Indicator)        |
-
-Use appropriate resistors for LEDs.
+**LEDs (3.3V):**
+| LED Pin        | ESP32 Pin | Notes                         |
+|----------------|-----------|--------------------------------|
+| RED_LED_PIN    | GPIO25    | Red LED with resistor, 3.3V logic |
+| GREEN_LED_PIN  | GPIO26    | Green LED with resistor, 3.3V logic |
 
 ## Frequency, Sync Word, and CRC
 
-- **Frequency:**  
-  ```cpp
-  const long frequency = 868100000; // 868.1 MHz (EU ISM band)
-  ```
-
-- **LoRa Sync Word:**  
-  ```cpp
-  LoRa.setSyncWord(0x13); // Unique sync word to isolate your network traffic
-  ```
-  
-- **Enable CRC:**  
-  ```cpp
-  LoRa.enableCrc(); // Ensures packet integrity
-  ```
+```cpp
+const long frequency = 868100000; // 868.1 MHz for EU ISM band
+LoRa.setSyncWord(0x13); // Unique sync word for your network
+LoRa.enableCrc(); // Ensure packet integrity with CRC
+```
 
 ## Software Setup
 
@@ -163,83 +162,77 @@ Use appropriate resistors for LEDs.
    - [AdafruitIO_Ethernet](https://github.com/adafruit/Adafruit_IO_Arduino)
 
 3. **Configure Credentials:**
-   - In the indoor code, set your Wi-Fi credentials:
+   - In indoor code:
      ```cpp
      const char* ssid = "YourWiFiSSID";
      const char* password = "YourWiFiPassword";
-     ```
-   - Set Adafruit IO credentials:
-     ```cpp
      #define IO_USERNAME "your_adafruit_io_username"
      #define IO_KEY "your_adafruit_io_key"
      ```
 
 4. **Upload Code:**
-   - Upload `OutdoorStation.ino` to the outdoor ESP32.
-   - Upload `IndoorStation.ino` to the indoor ESP32.
-   - Ensure both use the same frequency and sync word.
+   - Upload `OutdoorStation.ino` to outdoor ESP32.
+   - Upload `IndoorStation.ino` to indoor ESP32.
+   - Ensure same frequency & sync word on both units.
 
 ## Usage
 
 1. **Power Up Both Units:**
-   - Outdoor station waits for "REQ" and responds with T/H data.
-   - Indoor station requests outdoor data periodically, measures indoor conditions, and calculates dew points.
+   - Outdoor waits for `REQ` and sends T/H data.
+   - Indoor requests outdoor data, measures indoor conditions, calculates dew points.
 
 2. **LED Ventilation Guidance:**
-   - **Green LED:** Airing out will likely reduce indoor humidity.
-   - **Red LED:** No benefit from airing out.
-   - **Off:** Borderline conditions, limited benefit.
+   - Green: Airing out helps reduce indoor humidity.
+   - Red: No benefit from airing out.
+   - Off: Borderline conditions.
 
 3. **Cloud Upload (Optional):**
-   - If Wi-Fi or Ethernet connected, indoor unit uploads data to Adafruit IO every 5 minutes.
+   - If connected, indoor uploads data to Adafruit IO every 5 mins.
 
 4. **Automatic Recovery:**
-   - Outdoor data reset after 1 minute of inactivity (no updates).
+   - Outdoor data resets after 1 minute if no updates.
    - Sensor and LoRa reinitialized after repeated failures.
 
 ## Maintenance and Troubleshooting
 
-- **No Sensor Data:**
-  - Check SHT85 wiring and power.
-  - Code attempts reinitialization after repeated failures.
+- **Sensor Issues:**  
+  Check SHT85 wiring. Code attempts reinitialization after multiple failures.
 
-- **LoRa Communication Issues:**
-  - Ensure matching frequency, sync word, and CRC on both stations.
-  - Check antennas and signal conditions.
+- **LoRa Communication Problems:**  
+  Ensure same frequency, sync word, and CRC on both ends.  
+  Check antennas and signal environment.
 
-- **LCD or LED Problems:**
-  - Verify I2C address and wiring for the LCD.
-  - Ensure LED pins and brightness values are correct.
+- **LCD or LED Problems:**  
+  Verify I2C address and wiring for LCD.  
+  Use a level shifter for I2C lines since LCD runs at 5V.  
+  Check LED pins and resistor values.
 
-- **Network Failures:**
-  - For Wi-Fi: Check SSID, password, and signal strength.
-  - For Ethernet: Check cable, DHCP success. Consider static IP if needed.
-  - Code retries connections periodically without blocking.
+- **Network Failures:**  
+  Check Wi-Fi credentials or Ethernet cable and DHCP.  
+  Code retries periodically without blocking main loop.
 
 ## Power and Housing
 
-- **Outdoor Unit:**
-  - Use a weatherproof enclosure.
-  - Ensure airflow for accurate humidity readings.
+- **Outdoor Unit:**  
+  Weatherproof enclosure, ensure airflow for accurate humidity readings.
 
-- **Indoor Unit:**
-  - Place centrally, ensure LCD and LEDs are visible for quick humidity management decisions.
+- **Indoor Unit:**  
+  Centrally located for easy viewing of LCD and LED indicators.
 
 ## Future Enhancements
 
-- **Security:**
-  - Add encryption or authentication if privacy is a concern.
+- **Security:**  
+  Consider encryption for sensitive data.
 
 - **Power Saving:**
-  - Implement sleep modes for battery-powered outdoor units.
+  Sleep modes for battery-powered outdoor units.
 
 - **Data Logging:**
-  - Add local storage (SD card) for offline analysis.
+  Add local storage (SD card) for offline analysis.
 
 - **Integration:**
-  - Interface with smart home systems to automate ventilation or alerts.
+  Interface with smart home systems for automated ventilation.
 
 ## License
 
 This project is released under the [MIT License](LICENSE).
-
