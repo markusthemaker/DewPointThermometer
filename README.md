@@ -137,7 +137,7 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 | RED_LED_PIN    | GPIO25    | Red LED with resistor, 3.3V logic |
 | GREEN_LED_PIN  | GPIO26    | Green LED with resistor, 3.3V logic |
 
-![Dew Point Thermometer Prototype Wiring](./img/1.jpeg)
+![Dew Point Thermometer Prototype Wiring](./img/3.jpeg)
 
 ## Frequency, Sync Word, and CRC
 
@@ -217,9 +217,12 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
 
 - **Outdoor Unit:**  
   Weatherproof enclosure, ensure airflow for accurate humidity readings.
+  Good quality housing: TFA Dostmann Potective Cover for Transmitter 
 
 - **Indoor Unit:**  
-  Centrally located for easy viewing of LCD and LED indicators.
+  3D files available. 
+
+![Dew Point Thermometer Prototype Wiring](./img/4.jpeg)
 
 ## Future Enhancements
 
