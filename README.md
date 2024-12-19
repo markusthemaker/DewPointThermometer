@@ -19,14 +19,14 @@
 
 In atmospheric science and indoor air quality management, the **dew point** is a critical metric. It represents the temperature at which the water vapor in the air becomes saturated and begins to condense into liquid water. A higher dew point indicates more moisture in the air, often leading to discomfort, potential mold growth, and structural damage. By understanding and controlling dew point, one can maintain healthier, more comfortable indoor conditions, prevent condensation-related issues, and optimize energy usage for heating and cooling. Monitoring dew point is thus invaluable in achieving both human comfort and long-term preservation of building materials.
 
-This project implements a robust dew point thermometer system with **indoor** and **outdoor** stations. The **outdoor station** measures temperature/humidity with an SHT85 sensor and transmits data via LoRa. The **indoor station** receives this data, measures its own conditions, calculates both indoor and outdoor dew points, and determines if airing the house out would help control indoor humidity or not. An LED indicator provides a quick visual guide for whether or not to ventilate, and a LCD display shows the current measured and calculated values for indoor & outdoor. The system is connected to Adafruit Cloud for tracking and graphing data. 
+This project implements a robust dew point thermometer system with a base station that connects via Lora to an indoor and outdoor sensor. The sensors measures temperature/humidity with a highly accurate SHT85 sensor. The base station receives this data from both sensors, calculates both indoor and outdoor dew points, and determines if airing the house out would help control indoor humidity or not. An LED indicator provides a quick visual guide for whether or not to ventilate, and an LCD display shows the current measured and calculated values for indoor & outdoor conditions. The system is connected to Adafruit Cloud for tracking and graphing data.
 
 By employing a unique LoRa sync word, CRC checks, ensuring network connectivity before I/O operations, and using timed intervals for tasks, the system remains responsive and reliable—even in noisy RF environments or when the Ethernet cable is disconnected. Additionally, a logic level converter (level shifter) is required for the LCD if it operates at 5V while the rest of the system runs at 3.3V.
 
 ## Features
 
 - **Indoor/Outdoor Measurements:**  
-  - Indoor station monitors its own temp/hum, receives outdoor data for comparative dew point analysis.
+The system now uses separate LoRa sensor nodes for both indoor and outdoor measurements. Each sends temperature/humidity data autonomously at set intervals. Note that V1 of the project had the indoor sensor mounted at the back of the base station, but self-heating of the system due to the LCD lighting skewed measurements. Separating the sensors from the base station fixed the problem. 
 
 - **Scientific Dew Point Calculation Using the Magnus Approximation:**  
   The dew point can be approximated using the Magnus–Tetens formula, which provides a practical way to compute dew point (`D`) based on temperature (`T`) and relative humidity (`H`). Different constants are used depending on whether the temperature is above or below 0°C:
@@ -64,11 +64,25 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 
 - **Failure Recovery:**
   - Reinitializes SHT85 and LoRa after multiple failures.
-  - Resets outdoor values if no data for 1 minute.
+  - Uses flags to show old (stale) data as "---" on the LCD instead of resetting values to zero.
 
 - **Optional Cloud Connectivity (Adafruit IO):**
   - Uploads data every 5 minutes if Wi-Fi or Ethernet is connected.
   - Skips uploads gracefully if disconnected.
+
+## Changelog from Version 1.0 to 2.0:
+
+- Data Acquisition Approach:
+    Changed from a request/response model (indoor station requesting outdoor data) to both indoor and outdoor sensors autonomously sending data over LoRa at fixed intervals. The base station now only listens, simplifying communication.
+
+- Multiple Sensor Nodes for Indoor/Outdoor:
+    Instead of measuring indoor conditions at the main station, a separate indoor LoRa sensor node sends indoor data. This allows flexible placement of the indoor sensor, potentially reducing self-heating and interference.
+
+ - Stale Data Handling:
+    Instead of resetting values to 0.0 when data is old, the code now uses boolean flags to indicate old data. The LCD displays "---" for stale indoor or outdoor data, clearly distinguishing no-data scenarios from actual zero values.
+
+ - Humidity Rounding Improvement:
+    Humidity is now rounded before displaying, ensuring values like 37.6% appear as 38% rather than truncating.
 
 ## Design Principles
 
@@ -89,7 +103,7 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 
 ## Hardware Components
 
-### Outdoor Station
+### Sensors (Indoor and Outdoor)
 - ESP32 (or similar MCU)
 - SHT85 Temp/Hum Sensor (3.3V)
 - LoRa Module (SX1276/SX1278, 3.3V)
@@ -97,7 +111,6 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 
 ### Indoor Station
 - ESP32 (Wi-Fi and/or W5500 Ethernet, all 3.3V)
-- SHT85 Temp/Hum Sensor (3.3V)
 - LoRa Module (3.3V)
 - 20x4 I2C LCD Display (requires 5V)
 - Bi-Color LED or separate Red/Green LEDs (3.3V via PWM)
@@ -107,7 +120,7 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 
 ## Wiring
 
-**Note:** The ESP32 and LoRa, SHT85, Ethernet modules operate at 3.3V logic. The LCD typically requires 5V and is not 3.3V tolerant on I2C lines. Use a bidirectional logic level converter for I2C SDA and SCL lines between ESP32 (3.3V) and LCD (5V).
+**Note:** The ESP32, LoRa, and Ethernet modules operate at 3.3V logic. The LCD typically requires 5V and is not 3.3V tolerant on I2C lines. Use a bidirectional logic level converter for I2C SDA and SCL lines between ESP32 (3.3V) and LCD (5V).
 
 | ![Dew Point Thermometer Prototype Wiring](./img/3.jpeg) | 
 |:--:| 
@@ -115,9 +128,9 @@ By employing a unique LoRa sync word, CRC checks, ensuring network connectivity 
 
 ## Wiring
 
-Below are the wiring instructions for both stations. Use short, direct references and keep related signals grouped. All components except the LCD and LEDs run at 3.3V logic. The LCD is 5V and requires a logic level converter for the I2C lines.
+Below are the wiring instructions. Use short, direct references and keep related signals grouped. All components except the LCD and LEDs run at 3.3V logic. The LCD is 5V and requires a logic level converter for the I2C lines.
 
-### Outdoor Station Wiring
+### Sensor Station Wiring
 
 **SHT85 Sensor (3.3V I2C):**
 - SCL -> ESP32 GPIO22 (I2C Clock)
@@ -137,12 +150,6 @@ Below are the wiring instructions for both stations. Use short, direct reference
 *(DIO0 is not used on the indoor station, but on the outdoor station you might connect it to an available GPIO if needed.)*
 
 ### Indoor Station Wiring
-
-**SHT85 Sensor (3.3V I2C):**
-- SCL -> ESP32 GPIO22 (I2C Clock)
-- SDA -> ESP32 GPIO21 (I2C Data)
-- VCC -> 3.3V
-- GND -> GND
 
 **LoRa Module (3.3V SPI):**
 - SCK -> ESP32 GPIO18
@@ -204,7 +211,7 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
    - [AdafruitIO_Ethernet](https://github.com/adafruit/Adafruit_IO_Arduino)
 
 3. **Configure Credentials:**
-   - In indoor code:
+   - In base station code:
      ```cpp
      const char* ssid = "YourWiFiSSID";
      const char* password = "YourWiFiPassword";
@@ -213,10 +220,16 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
      #define IO_USERNAME "your_adafruit_io_username"
      #define IO_KEY "your_adafruit_io_key"
      ```
+   - In sensor code:
+     ```cpp
+     //Set to "IN" for Indoor Sensor
+     //Set to "OUT" for Outdoor Sensor
+     const String inOrOut = "OUT"; 
+     ```
 
 4. **Upload Code:**
-   - Upload [OutdoorStation.ino](OutdoorStation.ino) to outdoor ESP32.
-   - Upload [IndoorStation.ino](IndoorStation.ino) to indoor ESP32.
+   - Upload [DewPoint_BaseStation.ino](DewPoint_BaseStation.ino) to outdoor ESP32.
+   - Upload [DewPoint_Sensor.ino](DewPoint_Sensor.ino) to indoor ESP32.
    - Ensure same frequency & sync word on both units.
 
 ## Housing
@@ -225,11 +238,11 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
 |:--:| 
 | *Top Left: Custom Indoor Housing with LED, LCD, DC & Ethernet connector, air vents. Top Right: Small cut-out for sensor. Bottom Left: Mounting via spacers and (hot) glue. Bottom right: Outdoor FTA Housing. For both, indoor and outdoor housing, the DC connector is connected to a 0.2A fuse for safety* |
 
-- **Outdoor Unit:**  
+- **Sensor Units:**  
   Weatherproof enclosure, ensure airflow for accurate humidity readings.
   Good quality housing: TFA Dostmann Potective Cover for Transmitter. 
 
-- **Indoor Unit:**
+- **Indoor Base Station:**
   - Indoor Housing was designed using CAD Onshape.
   - Link to my [Onshape design](https://cad.onshape.com/documents/c48dac3dd317ad2774113701/w/70a39c90a07f91a9a65c84c1/e/97dbad388adcff361e7d9df7) to my design.  
   - [3D STL file for printing](IndoorHousing.stl)
@@ -237,9 +250,9 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
 
 ## Usage
 
-1. **Power Up Both Units:**
-   - Outdoor waits for `REQ` and sends T/H data.
-   - Indoor requests outdoor data, measures indoor conditions, calculates dew points.
+1. **Power Up the Units:**
+  - Outdoor and indoor sensor nodes send data every set interval automatically.
+  - Base station listens continuously and updates display.
 
 2. **LED Ventilation Guidance:**
    - Green: Airing out helps reduce indoor humidity.
