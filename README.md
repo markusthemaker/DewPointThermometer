@@ -5,6 +5,7 @@
 ## Table of Contents
 - [Introduction and Motivation](#introduction-and-motivation)
 - [Features](#features)
+- [Changelog](#changelog)
 - [Design Principles](#design-principles)
 - [Hardware Components](#hardware-components)
 - [Wiring](#wiring)
@@ -125,8 +126,6 @@ The system now uses separate LoRa sensor nodes for both indoor and outdoor measu
 | ![Dew Point Thermometer Prototype Wiring](./img/3.jpeg) | 
 |:--:| 
 | *Left: Wiring & Prototype Testing. Top Right: LCD Display Testing. Bottom Right: Assembled Components* |
-
-## Wiring
 
 Below are the wiring instructions. Use short, direct references and keep related signals grouped. All components except the LCD and LEDs run at 3.3V logic. The LCD is 5V and requires a logic level converter for the I2C lines.
 
