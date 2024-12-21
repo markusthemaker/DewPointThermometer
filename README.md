@@ -111,13 +111,13 @@ The system now uses separate LoRa sensor nodes for both indoor and outdoor measu
 - Stable 3.3V power supply or use a DC-DC step down module
 
 ### Indoor Station
-- ESP32 (Wi-Fi and/or W5500 Ethernet, all 3.3V)
-- LoRa Module (3.3V)
-- 20x4 I2C LCD Display (requires 5V)
+- ESP32 with EiFi (3.3V)
+- W5500 Ethernet Module (3.3V)
+- LoRa Module (SX1276, 3.3V)
+- 20x4 I2C LCD Display (5.0V)
 - Bi-Color LED or separate Red/Green LEDs (3.3V via PWM)
 - **Logic Level Converter for LCD I2C Lines**  
-  (The LCD is powered at 5V, while ESP32 I2C lines are 3.3V. A level shifter ensures proper logic levels.)
-- Stable 5V supply via DC-DC step down module. For 3.3V, sinmply use ESP 3.3V out. 
+- Stable 5V supply via DC-DC step down module. For 3.3V, simply use the ESP 3.3V out. 
 
 ## Wiring
 
