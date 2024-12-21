@@ -85,6 +85,9 @@ The system now uses separate LoRa sensor nodes for both indoor and outdoor measu
  - Humidity Rounding Improvement:
     Humidity is now rounded before displaying, ensuring values like 37.6% appear as 38% rather than truncating.
 
+- Sleep Feature: 
+  The sensor nodes now use deep sleep between transmissions, significantly reducing power consumption and avoiding self-heating issues inside the sensor enclosure (<0.01C - beyond accuracy of sensor). This helps maintain more accurate measurements and prolongs battery life when operating off-grid.
+
 ## Design Principles
 
 1. **Reliability in Noise:**  
@@ -116,7 +119,7 @@ The system now uses separate LoRa sensor nodes for both indoor and outdoor measu
 - LoRa Module (SX1276, 3.3V)
 - 20x4 I2C LCD Display (5.0V)
 - Bi-Color LED or separate Red/Green LEDs (3.3V via PWM)
-- **Logic Level Converter for LCD I2C Lines**  
+- Logic Level Converter for LCD I2C Lines, e.g. TXS0108E
 - Stable 5V supply via DC-DC step down module. For 3.3V, simply use the ESP 3.3V out. 
 
 ## Wiring
@@ -146,7 +149,7 @@ Below are the wiring instructions. Use short, direct references and keep related
 - VCC -> 3.3V
 - GND -> GND
 
-*(DIO0 is not used on the indoor station, but on the outdoor station you might connect it to an available GPIO if needed.)*
+*(DIO0 is not used)*
 
 ### Indoor Station Wiring
 
