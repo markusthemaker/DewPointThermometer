@@ -1,6 +1,8 @@
 # Dew Point Thermometer with LoRa and Internet Connectivity
 
-![Dew Point Thermometer](./img/IMG_2939.jpeg)
+| ![Dew Point Thermometer](./img/IMG_2939.jpeg) | 
+|:--:| 
+| *T = Temperature, H = Humidity, D = Dewpoint. Significant delta in D between indoor and outdoor indicated by LED* |
 
 ## Table of Contents
 - [Introduction and Motivation](#introduction-and-motivation)
