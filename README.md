@@ -249,7 +249,7 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
 - **Indoor Base Station:**
   - Indoor Housing was designed using CAD Onshape.
   - Link to my [Onshape design](https://cad.onshape.com/documents/c48dac3dd317ad2774113701/w/70a39c90a07f91a9a65c84c1/e/97dbad388adcff361e7d9df7) to my design.  
-  - [3D STL file for printing](Base_Station_3D_Print)
+  - [3D STL file for printing](Base_Station_3D_Print.stl)
 
 
 ## Usage
