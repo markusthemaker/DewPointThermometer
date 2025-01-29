@@ -73,23 +73,37 @@ The system now uses separate LoRa sensor nodes for both indoor and outdoor measu
   - Uploads data every 5 minutes if Wi-Fi or Ethernet is connected.
   - Skips uploads gracefully if disconnected.
 
-## Changelog from Version 1.0 to 2.0:
+## Changelog
 
-- Data Acquisition Approach:
-    Changed from a request/response model (indoor station requesting outdoor data) to both indoor and outdoor sensors autonomously sending data over LoRa at fixed intervals. The base station now only listens, simplifying communication.
-
-- Multiple Sensor Nodes for Indoor/Outdoor:
-    Instead of measuring indoor conditions at the main station, a separate indoor LoRa sensor node sends indoor data. This allows flexible placement of the indoor sensor, potentially reducing self-heating and interference.
-
- - Stale Data Handling:
-    Instead of resetting values to 0.0 when data is old, the code now uses boolean flags to indicate old data. The LCD displays "---" for stale indoor or outdoor data, clearly distinguishing no-data scenarios from actual zero values.
-
- - Humidity Rounding Improvement:
-    Humidity is now rounded before displaying, ensuring values like 37.6% appear as 38% rather than truncating.
-
-- Sleep Feature: 
-  The sensor nodes now use deep sleep between transmissions, significantly reducing power consumption and avoiding self-heating issues inside the sensor enclosure (<0.01C - beyond accuracy of sensor). This helps maintain more accurate measurements and prolongs battery life when operating off-grid.
-
+  ## Changelog from Version 1.0 to 2.0:
+  
+  - Data Acquisition Approach:
+      Changed from a request/response model (indoor station requesting outdoor data) to both indoor and outdoor sensors autonomously sending data over LoRa at fixed intervals. The base station now only listens, simplifying communication.
+  
+  - Multiple Sensor Nodes for Indoor/Outdoor:
+      Instead of measuring indoor conditions at the main station, a separate indoor LoRa sensor node sends indoor data. This allows flexible placement of the indoor sensor, potentially reducing self-heating and interference.
+  
+   - Stale Data Handling:
+      Instead of resetting values to 0.0 when data is old, the code now uses boolean flags to indicate old data. The LCD displays "---" for stale indoor or outdoor data, clearly distinguishing no-data scenarios from actual zero values.
+  
+   - Humidity Rounding Improvement:
+      Humidity is now rounded before displaying, ensuring values like 37.6% appear as 38% rather than truncating.
+  
+  - Sleep Feature: 
+    The sensor nodes now use deep sleep between transmissions, significantly reducing power consumption and avoiding self-heating issues inside the sensor enclosure (<0.01C - beyond accuracy of sensor). This helps maintain more accurate measurements and prolongs battery life when operating off-grid.
+  
+  ## Changelog from Version 2.0 to 3.0:
+  
+  - Listen Before Talk (LBT) via RSSI check:
+    A function isChannelClear() measures the RSSI over a brief period (200 ms) to ensure the channel is free below a certain threshold (RSSI_THRESHOLD = -80 dBm). If the channel is busy, the sensor waits and checks again before transmitting.
+  
+  - LoRa Radio Configuration Changes:
+    - Spreading Factor changed to 10 (was lower in v1.2, e.g. 7 or 8). A higher SF increases link reliability over longer ranges but also increases airtime.
+    - Coding Rate changed to 4/6 (previously 4/5 or 4/8 in v1.2). This can improve robustness at the cost of throughput.
+    - Transmit Power set to 14 dBm (down from a higher value in v1.2, e.g. 20 dBm), which is more compliant with typical EU duty-cycle and power regulations.
+    - Frequency set to 868300000 Hz (explicit 868.3 MHz), previously something like 868E6 or 868.1 MHz.
+    - Duty Cycle mention and practical sending interval set to 40 seconds to stay under 1% duty cycle constraints if the typical packet transmission is around 400 ms.
+  
 ## Design Principles
 
 1. **Reliability in Noise:**  
