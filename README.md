@@ -276,9 +276,9 @@ Adafruit IO’s default dashboard widgets are quick to set up, but they can be l
 - **Automated Annotation**: Add day boundaries, highlight positive/negative sections, or label data in ways standard widgets cannot.
 
 Three custom MATLAB plots give you deeper insights and more professional-looking figures than basic Adafruit IO dashboard widgets: 
-1. **[Outdoor plot](Matlab_Plot_Dewpoint.M):** Temperature, Humidity, Dew Point over last 3 days with segmentation into 6-hour intervals.
-2. **Indoor plot:** Temperature, Humidity, Dew Point over last 3 days with segmentation into 6-hour intervals.
-3. **Delta dew point plot:** Indoor and outdoor dew point, and delta of outdoor minus indoor to indicate in green when dewpoint outdoor is lower than indoor and vice versa.  
+1. **[Outdoor plot](Matlab_Plot_Outdoor.M):** Temperature, Humidity, Dew Point over last 3 days with segmentation into 6-hour intervals.
+2. **[Indoor plot](Matlab_Plot_Indoor.M):** Temperature, Humidity, Dew Point over last 3 days with segmentation into 6-hour intervals.
+3. **[Delta dew point plot](Matlab_Plot_Dewpoint.M):** Indoor and outdoor dew point, and delta of outdoor minus indoor to indicate in green when dewpoint outdoor is lower than indoor and vice versa.  
 
 ### How to Set Up ThingSpeak for MATLAB Visualizations
 
