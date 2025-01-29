@@ -302,7 +302,7 @@ Three custom MATLAB plots give you deeper insights and more professional-looking
    - When it successfully runs, you’ll see the resulting plot.  
    - You can then embed this visualization in a ThingSpeak channel or share it via a public URL. Add "?height=auto&width=auto" to the URL for a full-size visualization.  
 
-![Dew Point Thermometer Adafruit IO](./img/Screenshot_oudoor.png) 
+![Dew Point Thermometer Adafruit IO](./img/Screenshot_outdoor.png) 
 ![Dew Point Thermometer Adafruit IO](./img/Screenshot_dewpoint.png) 
 
 ## Usage
