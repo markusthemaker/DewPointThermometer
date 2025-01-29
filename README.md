@@ -323,8 +323,6 @@ Three custom MATLAB plots give you deeper insights and more professional-looking
 4. **Cloud Upload (Optional):**
    - If connected to wifi or Ethernet, the indoor unit uploads data to Adafruit IO every 5 mins:
 
-![Dew Point Thermometer Adafruit IO](./img/Screenshot.png) 
-
 ## Maintenance and Troubleshooting
 
 - **Sensor Issues:**  
