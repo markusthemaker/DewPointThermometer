@@ -14,6 +14,7 @@
 - [Frequency, Sync Word, and CRC](#frequency-sync-word-and-crc)
 - [Software Setup](#software-setup)
 - [Housing](#housing)
+- [Advanced Matlab Visualization with ThingSpeak and Adafruit IO](#advanced-matlab-visualization-with-thingspeak-and-adafruit-io)
 - [Usage](#usage)
 - [Maintenance and Troubleshooting](#maintenance-and-troubleshooting)
 - [License](#license)
@@ -265,6 +266,44 @@ LoRa.enableCrc(); // Ensure packet integrity with CRC
   - Link to my [Onshape design](https://cad.onshape.com/documents/c48dac3dd317ad2774113701/w/70a39c90a07f91a9a65c84c1/e/97dbad388adcff361e7d9df7) to my design.  
   - [3D STL file for printing](Base_Station_3D_Print.stl)
 
+## Advanced Matlab Visualization with ThingSpeak and Adafruit IO
+
+### Why This Visualization Is Better Than Default Adafruit IO Views
+Adafruit IO’s default dashboard widgets are quick to set up, but they can be limited in layout, styling, and data processing capabilities (e.g., smoothing, interpolation, custom axes). By using MATLAB (on ThingSpeak) to fetch your Adafruit IO data and plot it:
+- **Multiple Axes**: You can overlay different data series (outdoor vs. indoor dew point) and even plot a delta series on a separate axis.
+- **Custom Interpolation & Synchronization**: Easily handle missing data or uneven timestamps by interpolating only within valid intervals.
+- **Fine-Grained Control**: Adjust ticks, date formats, colors, line styles, and gridlines to clearly highlight trends.
+- **Automated Annotation**: Add day boundaries, highlight positive/negative sections, or label data in ways standard widgets cannot.
+
+Three custom MATLAB plots give you deeper insights and more professional-looking figures than basic Adafruit IO dashboard widgets: 
+1. **Outdoor plot:** Temperature, Humidity, Dew Point over last 3 days with segmentation into 6-hour intervals.
+2. **Indoor plot:** Temperature, Humidity, Dew Point over last 3 days with segmentation into 6-hour intervals.
+3. **Delta dew point plot:** Indoor and outdoor dew point, and delta of outdoor minus indoor to indicate in green when dewpoint outdoor is lower than indoor and vice versa.  
+
+### How to Set Up ThingSpeak for MATLAB Visualizations
+
+1. **Create a ThingSpeak Account**  
+   - If you haven’t already, sign up at [ThingSpeak](https://thingspeak.com/).  
+   - Once logged in, navigate to the **Apps** tab and then **MATLAB Visualizations**.
+
+2. **Create a New Visualization**  
+   - Click **New** > **MATLAB Visualization**.  
+   - This will open the MATLAB Editor interface within ThingSpeak.
+
+3. **Copy and Paste Your MATLAB Code**  
+   - Copy the entire MATLAB script below into the MATLAB code window.  
+   - At the top of the script, update any parameters (like your Adafruit IO username and feed keys. Note, these feed keys must be set to public in Adafruit for these scripts to function).
+
+4. **Adjust Script Settings**  
+   - Make sure the date ranges (`dateStartUTC` and `dateEndUTC`) and `maxDataPoints` reflect how much data you want to fetch and plot.
+
+5. **Run and Save**  
+   - Click **Save and Run** to test your visualization.  
+   - When it successfully runs, you’ll see the resulting plot.  
+   - You can then embed this visualization in a ThingSpeak channel or share it via a public URL. Add "?height=auto&width=auto" to the URL for a full-size visualization.  
+
+![Dew Point Thermometer Adafruit IO](./img/Screenshot_oudoor.png) 
+![Dew Point Thermometer Adafruit IO](./img/Screenshot_dewpoint.png) 
 
 ## Usage
 
