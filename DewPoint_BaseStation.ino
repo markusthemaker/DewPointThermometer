@@ -37,35 +37,35 @@ const int RED_MAX_BRIGHTNESS = 255;
 const int GREEN_MAX_BRIGHTNESS = 15;
 
 // LoRa settings
-const long frequency = 868100000; // 868.1 MHz
-int currentSF = 7;        // Default Spreading Factor
-long currentBW = 125000;  // Default Bandwidth in Hz (125 kHz)
-int currentCR = 5;        // Default Coding Rate denominator (e.g., 5 for 4/5)
+const long frequency = 868300000; // 868.3 MHz
+const int currentSF = 10;         // SF10 for improved range/reliability
+const long currentBW = 125000;    // Bandwidth remains at 125 kHz
+const int currentCR = 6;          // Coding Rate set to 4/6
 
-// Wi-Fi credentials
+// Set Wi-Fi credentials
 const char* ssid = "";
-const char* password = "#";
+const char* password = "";
 
-// Adafruit IO credentials
+// Set Adafruit IO credentials
 #define IO_USERNAME ""
 #define IO_KEY ""
 
-const unsigned long outdoorDataTimeout = 150000; //set display to "---" if no data received after timeout
+const unsigned long outdoorDataTimeout = 120000; //set display to "---" if no data received after timeout
 unsigned long lastOutdoorDataTime = 0; 
 bool outdoorDataOld = true; // Start with no data (so display "---")
 
-const unsigned long indoorDataTimeout = 60000; //set display to "---" if no data received after timeout
+const unsigned long indoorDataTimeout = 120000; //set display to "---" if no data received after timeout
 unsigned long lastIndoorDataTime = 0; 
 bool indoorDataOld = true; // Start with no data (so display "---")
 
 unsigned long lastNoInternetAttemptTime = 0;
-const unsigned long noInternetRetryInterval = 300000;
+const unsigned long noInternetRetryInterval = 300000; // retry every 5 min 
 
 unsigned long lastIoConnectAttempt = 0;
-const unsigned long ioReconnectInterval = 300000;
+const unsigned long ioReconnectInterval = 300000; // retry every 5 min 
 
 unsigned long lastUploadTime = 0;
-const int uploadCycle = 300000;  
+const int uploadCycle = 300000; // upload every 5 min  
 
 const unsigned long blinkTimeout = 1000; 
 unsigned long lastBlink = 0;
@@ -159,6 +159,18 @@ void loop() {
     setLEDtoRed();
   }
 
+  if(millis() - lastBlink > blinkTimeout) {
+    lastBlink = millis();
+    lcd.setCursor(19,3);
+    if(blink) {
+      lcd.print(".");
+      blink = false;
+    } else {
+      lcd.print(" ");
+      blink = true; 
+    }
+  }
+
   if (millis() - lastNoInternetAttemptTime >= noInternetRetryInterval) {
     lastNoInternetAttemptTime = currentMillis; // Update last retry attempt time
     if (!retryInternetConnection()) {
@@ -203,18 +215,6 @@ void loop() {
 
     lastUploadTime = currentMillis;
   } 
-
-  if(millis() - lastBlink > blinkTimeout) {
-    lastBlink = millis();
-    lcd.setCursor(19,3);
-    if(blink) {
-      lcd.print(".");
-      blink = false;
-    } else {
-      lcd.print(" ");
-      blink = true; 
-    }
-  }
 
   delay(10);
 }

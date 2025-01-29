@@ -1,20 +1,20 @@
 // ESP32 to SHT85 Sensor:
-// ESP32 Pin	SHT85 Pin	Notes
-// 3.3V	VCC	Power supply (3.3V)
-// GND	GND	Ground connection
-// GPIO 21	SDA	I2C Data line
-// GPIO 22	SCL	I2C Clock line
+// ESP32 Pin    SHT85 Pin   Notes
+// 3.3V         VCC         Power supply (3.3V)
+// GND          GND         Ground connection
+// GPIO 21      SDA         I2C Data line
+// GPIO 22      SCL         I2C Clock line
 
 // ESP32 to LoRa SX1276 Module:
-// ESP32 Pin	LoRa Pin	Notes
-// 3.3V	VCC	Power supply (3.3V)
-// GND	GND	Ground connection
-// GPIO 5	NSS (CS)	Chip Select (CS) for LoRa
-// GPIO 18	SCK	SPI Clock (shared if needed)
-// GPIO 19	MISO	SPI Master In, Slave Out (shared if needed)
-// GPIO 23	MOSI	SPI Master Out, Slave In (shared if needed)
-// GPIO 27	RESET	LoRa module reset
-// GPIO 33	DIO0	Interrupt pin (LoRa DIO0)
+// ESP32 Pin    LoRa Pin    Notes
+// 3.3V         VCC         Power supply (3.3V)
+// GND          GND         Ground connection
+// GPIO 5       NSS (CS)    Chip Select (CS) for LoRa
+// GPIO 18      SCK         SPI Clock (shared if needed)
+// GPIO 19      MISO        SPI Master In, Slave Out (shared if needed)
+// GPIO 23      MOSI        SPI Master Out, Slave In (shared if needed)
+// GPIO 27      RESET       LoRa module reset
+// GPIO 33      DIO0        Interrupt pin (LoRa DIO0)
 
 #include <Wire.h>
 #include <SPI.h>
@@ -30,56 +30,67 @@
 #define LORA_RST 27
 #define LORA_IRQ 33
 
-//Set to "IN" for Indoor Sensor
-//Set to "OUT" for Outdoor Sensor
-const String inOrOut = "OUT"; 
+// Set to "IN" for Indoor Sensor, "OUT" for Outdoor Sensor
+const String inOrOut = "IN";
 
 // LoRa settings
-const long frequency = 868100000; // 868.1 MHz
-int currentSF = 7;        // Default Spreading Factor
-long currentBW = 125000;  // Default Bandwidth in Hz (125 kHz)
-int currentCR = 5;        // Default Coding Rate denominator (e.g., 5 for 4/5)
-// Sending the data package with SF 7, 125khz, CR5, takes ~50ms, sending it twice for redundancy ~100ms total
-// At a legally allowed max 1% duty cycle allowance, send every 10s at highest interval
-double sendInterval = 60; // Send interval 
+const long frequency = 868300000; // 868.3 MHz
+const int currentSF = 10;         // SF10 for improved range/reliability
+const long currentBW = 125000;    // Bandwidth remains at 125 kHz
+const int currentCR = 6;          // Coding Rate set to 4/6
+const int powerdbM = 14;          //et maximum allowed TX power (14 dBm) - this is for antenna without gain!
+
+// Sending interval in seconds (device sleeps between sends)
+// Important Legal Note: Sending interval needs to be max 1% duty cycle for LORA, i.e. if package send time is 400ms, send only every 40s. 
+const double sendInterval = 40;   // Sleep interval in seconds
+
+//  Important Legal Note: LBT (Listen Before Talk) is mandatory 
+const int RSSI_THRESHOLD = -80;   // Use a single threshold at -80 dBm
 
 SHTSensor sht(SHTSensor::SHT85);
 
 void setup() {
   Serial.begin(115200);
   
-  // Initialize I2C
+  // Initialize I2C for sensor communication
   Wire.begin();
+   
+  // Initialize LoRa SPI interface and module
+  SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
+  LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
+  if (!LoRa.begin(frequency)) {
+    Serial.println("Starting LoRa failed!");
+    while (true);
+  }
+  LoRa.setSyncWord(0x13);
+  LoRa.enableCrc();
+  LoRa.setSpreadingFactor(currentSF);   
+  LoRa.setSignalBandwidth(currentBW);  
+  LoRa.setCodingRate4(currentCR);       
+  LoRa.setTxPower(powerdbM); 
   
-  // Initialize SHT sensor
+  // Print current LoRa settings for verification
+  printLoRaSettings();
+  
+  // Implement Listen Before Talk (LBT)
+  Serial.println("Checking channel before transmission...");
+  while (!isChannelClear(RSSI_THRESHOLD)) {
+    Serial.print("\tChannel busy (RSSI threshold: ");
+    Serial.print(RSSI_THRESHOLD);
+    Serial.println(" dBm). Retrying in 100 ms...");
+    delay(100);
+  }
+  Serial.print("\tChannel is clear (threshold: ");
+  Serial.print(RSSI_THRESHOLD);
+  Serial.println(" dBm). Proceeding to send data.");
+  
+  // Read sensor data from SHT85 sensor
   if (sht.init()) {
     Serial.println("SHT sensor initialized.");
   } else {
     Serial.println("Failed to initialize SHT sensor!");
   }
-  
-  // Initialize LoRa
-  SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
-  LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
-  
-  if (!LoRa.begin(frequency)) {
-    Serial.println("Starting LoRa failed!");
-    while (true);
-  }
-  
-  LoRa.setSyncWord(0x13);
-  LoRa.enableCrc();
-  
-  // Set LoRa parameters and track them
-  LoRa.setSpreadingFactor(currentSF);    // e.g., SF7
-  LoRa.setSignalBandwidth(currentBW);    // e.g., 125000 for 125 kHz
-  LoRa.setCodingRate4(currentCR);        // e.g., 5 for 4/5
-  
-  // Print current LoRa settings
-  printLoRaSettings();
-  
-  // Read sensor data
-  float temp = 0.0;
+  float temp = 100.0;
   float hum = 0.0;
   if (sht.readSample()) {
     temp = sht.getTemperature();
@@ -87,50 +98,75 @@ void setup() {
   } else {
     Serial.println("Failed to read from SHT sensor.");
   }
-  
-  // Prepare data
+
+  // Prepare the data string to be sent
   String data = inOrOut + String(":T=") + String(temp, 1) + ",H=" + String(hum, 1);
   
-  // Send data twice to improve robustness in noisy environment 
-  const int repeatCount = 2; // Number of times to send the same packet
-  for (int i = 0; i < repeatCount; i++) {
-    unsigned long startTime = millis();    
-    LoRa.beginPacket();
-    LoRa.print(data);
-    LoRa.endPacket();
-    unsigned long endTime = millis();
-    
-    // Calculate transmission time
-    unsigned long txTime = endTime - startTime;
-    Serial.print("Transmission Time: ");
-    Serial.print(txTime);
-    Serial.println(" ms");
-    
-    Serial.println("Sent packet (" + String(i + 1) + "): " + data);
-    delay(250); // Small delay between repeated packets
-  }
+  // Send the data packet once
+  unsigned long startTime = millis();    
+  LoRa.beginPacket();
+  LoRa.print(data);
+  LoRa.endPacket();
+  unsigned long endTime = millis();
+  unsigned long txTime = endTime - startTime;
+  Serial.println("Sent packet: " + data);
+  Serial.print("Transmission Time: ");
+  Serial.print(txTime);
+  Serial.println(" ms");
   
-  // Prepare for deep sleep
+  // End LoRa session and prepare device for deep sleep
+  Serial.println("-------------------------------------------------");
   LoRa.end();
-  esp_sleep_enable_timer_wakeup(sendInterval * 1000000); // 30 seconds
-  Serial.println("Going to sleep for 30 seconds...");
+  esp_sleep_enable_timer_wakeup(sendInterval * 1000000); // Sleep for sendInterval seconds
+  Serial.println("Going to sleep for " + String(sendInterval) + " seconds...");
   esp_deep_sleep_start();
 }
 
 void loop() {
-  // This will not run as the device enters deep sleep after setup()
+  // This loop will not run because the device enters deep sleep after setup().
 }
 
 // Function to print current LoRa settings
 void printLoRaSettings() {
   Serial.println("Current LoRa Settings:");
-  Serial.print("Spreading Factor (SF): ");
+
+  Serial.print("\tFrequency: ");
+  Serial.println(frequency);
+
+  Serial.print("\tBandwidth (BW): ");
+  Serial.print(currentBW / 1000); // Convert to kHz for readability
+  Serial.println(" kHz");
+
+  Serial.print("\tSpreading Factor (SF): ");
   Serial.println(currentSF);
   
-  Serial.print("Bandwidth (BW): ");
-  Serial.print(currentBW / 1000); // Convert to kHz
-  Serial.println(" kHz");
-  
-  Serial.print("Coding Rate (CR): 4/");
+  Serial.print("\tCoding Rate (CR): 4/");
   Serial.println(currentCR);
+}
+
+// Function to perform Listen Before Talk (LBT)
+// Returns true if the measured RSSI is below the provided threshold, false otherwise.
+bool isChannelClear(int threshold) {
+  // Switch LoRa module to RX mode to measure RSSI
+  LoRa.receive();
+  unsigned long measureStart = millis();
+  int measuredRSSI = -200; // Initialize to an extremely low value
+  
+  // Measure the highest RSSI observed during the check duration (200 ms)
+  while (millis() - measureStart < 200) {
+    int currentRSSI = LoRa.packetRssi();
+    if (currentRSSI > measuredRSSI) {
+      measuredRSSI = currentRSSI;
+    }
+    delay(10);
+  }
+  
+  // Switch LoRa back to idle mode for transmission
+  LoRa.idle();
+  
+  Serial.print("\tMeasured RSSI: ");
+  Serial.println(measuredRSSI);
+  
+  // Return true if measured RSSI is below the given threshold (i.e., channel is clear)
+  return (measuredRSSI < threshold);
 }
