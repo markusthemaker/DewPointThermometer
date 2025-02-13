@@ -189,6 +189,7 @@ Below are the wiring instructions. Use short, direct references and keep related
 Make sure the level shifter is bidirectional and designed for I2C signals. Connect its power pins:
 - Level Shifter LV (low voltage side) -> 3.3V from ESP32
 - Level Shifter HV (high voltage side) -> 5V
+- Level Shifter OE -> 10kOhm -> Level Shifter VA //Output Enabled
 - GND shared among ESP32, LCD, and Level Shifter
 
 **Ethernet (W5500) Optional (3.3V SPI):**
