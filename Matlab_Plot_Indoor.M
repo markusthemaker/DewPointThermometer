@@ -1,16 +1,26 @@
-%% INDOOR
-% Reads public Adafruit IO feeds for Temperature & Humidity, computes Dew Point,
-% and plots them on dual y-axes. 
+% Reads public Adafruit IO feeds or Thingspeak channel data for Temperature &
+% Humidity, computes Dew Point, and plots them on dual y-axes. 
 % We convert time to numeric (datenum) so we can safely manage 
 % a manual x-axis with 6-hour vertical lines and day-boundary labels.
 
 % -------------------------------
 % STEP 1: DEFINE PARAMETERS
 % -------------------------------
-baseURL = 'https://io.adafruit.com/api/v2';
-aioUsername = 'x';  % <-- Replace with your username
-temperatureFeedKey = 'indoor-temperature';  % <-- Replace with your feed key
-humidityFeedKey    = 'indoor-humidity';     % <-- Replace with your feed key
+
+% Choose data source: 'adafruit' or 'thingspeak'
+dataSource = 'thingspeak';  % Change to 'thingspeak' to use Thingspeak data
+
+if strcmpi(dataSource, 'adafruit')
+    baseURL = 'https://io.adafruit.com/api/v2';
+    aioUsername = 'x';  % <-- Replace with your username
+    temperatureFeedKey = 'indoor-temperature';  % <-- Replace with your feed key
+    humidityFeedKey    = 'indoor-humidity';     % <-- Replace with your feed key
+else  % thingspeak
+    thingspeakChannelID = 'x';    % <-- Replace with your Thingspeak Channel ID
+    thingspeakReadAPIKey = 'x';   % <-- Replace with your Thingspeak Read API Key
+    temperatureField = 1;  % Field number for Temperature
+    humidityField    = 2;  % Field number for Humidity
+end
 
 maxDataPoints = 3000;
 
@@ -21,11 +31,20 @@ dateStartUTC = dateEndUTC - days(3);
 %% -------------------------------
 % STEP 2: FETCH DATA
 % -------------------------------
-temperatureDataUTC = fetchAdafruitIOData( ...
-    baseURL, aioUsername, temperatureFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
+if strcmpi(dataSource, 'adafruit')
+    temperatureDataUTC = fetchAdafruitIOData( ...
+        baseURL, aioUsername, temperatureFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
 
-humidityDataUTC = fetchAdafruitIOData( ...
-    baseURL, aioUsername, humidityFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
+    humidityDataUTC = fetchAdafruitIOData( ...
+        baseURL, aioUsername, humidityFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
+elseif strcmpi(dataSource, 'thingspeak')
+    temperatureDataUTC = fetchThingspeakData( ...
+        thingspeakChannelID, temperatureField, thingspeakReadAPIKey, dateStartUTC, dateEndUTC, maxDataPoints);
+    humidityDataUTC = fetchThingspeakData( ...
+        thingspeakChannelID, humidityField, thingspeakReadAPIKey, dateStartUTC, dateEndUTC, maxDataPoints);
+else
+    error('Unsupported dataSource specified.');
+end
 
 %% -------------------------------
 % STEP 3: VALIDATE & SYNCHRONIZE DATA
@@ -49,7 +68,8 @@ relHumidity = commonDataUTC.Humidity;
 
 a = 17.27; 
 b = 237.7;  % in °C
-gamma = (a.*tempC)./(b+tempC) + log(relHumidity/100);
+% Use max(relHumidity, eps) to avoid taking log of zero or negative values
+gamma = (a.*tempC)./(b+tempC) + log(max(relHumidity, eps)/100);
 dewPointC = (b*gamma)./(a-gamma);
 
 commonDataUTC.DewPoint = dewPointC;
@@ -157,10 +177,10 @@ xline(line2, 'k', 'LineWidth', 1);
 %% -------------------------------
 % STEP 8: OPTIONAL - SAVE
 % -------------------------------
-% saveas(gcf, 'Indoor_Plot.png');
+% saveas(gcf, 'Mstein_Indoor_Plot.png');
 
-% -------------------------------
-% LOCAL FUNCTION
+%% -------------------------------
+% LOCAL FUNCTIONS
 % -------------------------------
 function data = fetchAdafruitIOData(baseURL, aioUsername, feedKey, ...
                                     dateStartUTC, dateEndUTC, maxDataPoints)
@@ -192,6 +212,43 @@ function data = fetchAdafruitIOData(baseURL, aioUsername, feedKey, ...
         'InputFormat','yyyy-MM-dd''T''HH:mm:ss''Z''', ...
         'TimeZone','UTC');
     values = str2double({rawData.value});
+
+    data = timetable(timestampsUTC', values', 'VariableNames', {'Value'});
+    data = data(data.Time >= dateStartUTC & data.Time <= dateEndUTC, :);
+    data = sortrows(data);
+end
+
+function data = fetchThingspeakData(channelID, fieldNumber, readAPIKey, ...
+                                      dateStartUTC, dateEndUTC, maxDataPoints)
+    url = sprintf('https://api.thingspeak.com/channels/%s/fields/%d.json', channelID, fieldNumber);
+    startStr = datestr(dateStartUTC, 'yyyy-mm-dd HH:MM:SS');
+    endStr   = datestr(dateEndUTC,   'yyyy-mm-dd HH:MM:SS');
+
+    queryParams = { ...
+        'api_key', readAPIKey, ...
+        'results', num2str(maxDataPoints), ...
+        'start', startStr, ...
+        'end', endStr ...
+    };
+
+    options = weboptions('ContentType','json','Timeout',30);
+
+    try
+        result = webread(url, queryParams{:}, options);
+    catch ME
+        error('Error reading data from Thingspeak: %s', ME.message);
+    end
+
+    if ~isfield(result, 'feeds') || isempty(result.feeds)
+        data = timetable();
+        return
+    end
+
+    fieldName = sprintf('field%d', fieldNumber);
+    timestampsUTC = datetime({result.feeds.created_at}, ...
+        'InputFormat','yyyy-MM-dd''T''HH:mm:ss''Z''', ...
+        'TimeZone','UTC');
+    values = str2double({result.feeds.(fieldName)});
 
     data = timetable(timestampsUTC', values', 'VariableNames', {'Value'});
     data = data(data.Time >= dateStartUTC & data.Time <= dateEndUTC, :);
