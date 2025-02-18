@@ -1,25 +1,32 @@
-%%TAUPOINT_NUMERICAXIS.M
-% Reads public Adafruit IO feeds for Indoor & Outdoor Dew Point,
-% linearly interpolates missing data between valid time stamps,
-% and plots them on a single y-axis (Taupunkt).
-% Also plots a second axis (in black) with the delta (Outdoor-Indoor),
-% coloring negative segments in green and positive in red.
-% Both y-axes and their labels appear in black.
+% Reads public Adafruit IO feeds or Thingspeak channel data for Indoor &
+% Outdoor Dew Point, linearly interpolates missing data between valid time 
+% stamps, and plots them on a single y-axis (Dew Point). Also plots a second 
+% axis (in black) with the delta (Outdoor-Indoor), coloring negative segments 
+% in green and positive in red. Both y-axes and their labels appear in black.
 %
-% Now we convert the x-axis to numeric (datenum) to get
-% manual 6-hour ticks + day-boundary labels, etc.
+% Now we convert the x-axis to numeric (datenum) to get manual 6-hour ticks 
+% + day-boundary labels, etc.
 
 % -------------------------------
 % STEP 1: DEFINE PARAMETERS
 % -------------------------------
-baseURL = 'https://io.adafruit.com/api/v2';
 
-% Your Adafruit IO username (exactly as shown in your Adafruit IO profile)
-aioUsername = 'x';  % <-- Replace with your username
+% Choose data source: 'adafruit' or 'thingspeak'
+dataSource = 'thingspeak';  % Change to 'thingspeak' to use Thingspeak data
 
-% Feed keys for Dew Points (must be public)
-outdoorFeedKey = 'outdoor-dew-point';  % <-- Replace with your feed key
-indoorFeedKey  = 'indoor-dew-point';   % <-- Replace with your feed key
+if strcmpi(dataSource, 'adafruit')
+    baseURL = 'https://io.adafruit.com/api/v2';
+    % Your Adafruit IO username (exactly as shown in your Adafruit IO profile)
+    aioUsername = 'x';  % <-- Replace with your username
+    % Feed keys for Dew Points (must be public)
+    outdoorFeedKey = 'outdoor-dew-point';  % <-- Replace with your feed key
+    indoorFeedKey  = 'indoor-dew-point';   % <-- Replace with your feed key
+else  % thingspeak
+    thingspeakChannelID = 'x';    % <-- Replace with your Thingspeak Channel ID
+    thingspeakReadAPIKey = 'x';   % <-- Replace with your Thingspeak Read API Key
+    outdoorField = 6;  % Field number for Outdoor Dew Point
+    indoorField  = 3;  % Field number for Indoor Dew Point
+end
 
 % Number of data points to retrieve
 maxDataPoints = 2500;
@@ -31,11 +38,21 @@ dateStartUTC = dateEndUTC - days(3);  % 3 days ago in UTC
 %% -------------------------------
 % STEP 2: FETCH DATA (PUBLIC FEEDS)
 % -------------------------------
-outdoorDataUTC = fetchAdafruitIOData( ...
-    baseURL, aioUsername, outdoorFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
-
-indoorDataUTC = fetchAdafruitIOData( ...
-    baseURL, aioUsername, indoorFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
+if strcmpi(dataSource, 'adafruit')
+    outdoorDataUTC = fetchAdafruitIOData( ...
+        baseURL, aioUsername, outdoorFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
+    
+    indoorDataUTC = fetchAdafruitIOData( ...
+        baseURL, aioUsername, indoorFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
+elseif strcmpi(dataSource, 'thingspeak')
+    outdoorDataUTC = fetchThingspeakData( ...
+        thingspeakChannelID, outdoorField, thingspeakReadAPIKey, dateStartUTC, dateEndUTC, maxDataPoints);
+    
+    indoorDataUTC = fetchThingspeakData( ...
+        thingspeakChannelID, indoorField, thingspeakReadAPIKey, dateStartUTC, dateEndUTC, maxDataPoints);
+else
+    error('Unsupported dataSource specified.');
+end
 
 %% -------------------------------
 % STEP 3: VALIDATE & SYNCHRONIZE DATA
@@ -49,8 +66,7 @@ if isempty(indoorDataUTC) || height(indoorDataUTC) == 0
 end
 
 % We do an 'outer' join and specify 'linear' to interpolate missing data
-commonDataUTC = synchronize(outdoorDataUTC, indoorDataUTC, ...
-    'union', 'linear');
+commonDataUTC = synchronize(outdoorDataUTC, indoorDataUTC, 'union', 'linear');
 
 % Rename columns for clarity
 commonDataUTC.Properties.VariableNames = {'OutdoorDP','IndoorDP'};
@@ -63,20 +79,17 @@ tIndoorStart  = min(indoorDataUTC.Time);
 tIndoorEnd    = max(indoorDataUTC.Time);
 
 % Mask times where we don't want to extrapolate for Outdoor
-idxOutdoorOutOfRange = (commonDataUTC.Time < tOutdoorStart) ...
-    | (commonDataUTC.Time > tOutdoorEnd);
+idxOutdoorOutOfRange = (commonDataUTC.Time < tOutdoorStart) | (commonDataUTC.Time > tOutdoorEnd);
 commonDataUTC.OutdoorDP(idxOutdoorOutOfRange) = NaN;
 
 % Mask times where we don't want to extrapolate for Indoor
-idxIndoorOutOfRange = (commonDataUTC.Time < tIndoorStart) ...
-    | (commonDataUTC.Time > tIndoorEnd);
+idxIndoorOutOfRange = (commonDataUTC.Time < tIndoorStart) | (commonDataUTC.Time > tIndoorEnd);
 commonDataUTC.IndoorDP(idxIndoorOutOfRange) = NaN;
 
 %% -------------------------------
 % STEP 5: FILTER TO OUR TIME WINDOW (OPTIONAL)
 % -------------------------------
-commonDataUTC = commonDataUTC(commonDataUTC.Time >= dateStartUTC & ...
-                              commonDataUTC.Time <= dateEndUTC, :);
+commonDataUTC = commonDataUTC(commonDataUTC.Time >= dateStartUTC & commonDataUTC.Time <= dateEndUTC, :);
 
 %% -------------------------------
 % STEP 6: CONVERT TIME TO LOCAL (CET/CEST)
@@ -155,8 +168,7 @@ xlim([startLocalNum, endLocalNum]);
 allTicks_6h_num = (startLocalNum : 0.25 : endLocalNum);
 
 % Day boundaries
-majorTicks_1d_num = [startLocalNum, startLocalNum+1, ...
-                     startLocalNum+2, endLocalNum];
+majorTicks_1d_num = [startLocalNum, startLocalNum+1, startLocalNum+2, endLocalNum];
 
 % Place a tick at every 6 hours
 axRight.XTick = allTicks_6h_num;
@@ -178,8 +190,6 @@ grid on;
 % --- Optionally add bold lines at -1, -2 days from endLocalNum ---
 line1 = endLocalNum - 1;
 line2 = endLocalNum - 2;
-
-% If xline not supported, use: plot([line1 line1], ylim, 'k', 'LineWidth',2)
 xline(line1, 'k', 'LineWidth', 1, 'HandleVisibility', 'off');
 xline(line2, 'k', 'LineWidth', 1, 'HandleVisibility', 'off');
 
@@ -188,54 +198,91 @@ xline(line2, 'k', 'LineWidth', 1, 'HandleVisibility', 'off');
 % -------------------------------
 % saveas(gcf, 'Mstein_Taupoint_Plot.png');
 
-% -------------------------------
-% LOCAL FUNCTION
+%% -------------------------------
+% LOCAL FUNCTIONS
 % -------------------------------
 function data = fetchAdafruitIOData(baseURL, aioUsername, feedKey, ...
                                     dateStartUTC, dateEndUTC, maxDataPoints)
     % Build base URL
     url = sprintf('%s/%s/feeds/%s/data', baseURL, aioUsername, feedKey);
-
+    
     % Convert dateStartUTC, dateEndUTC to ISO-8601 strings
     startStr = datestr(dateStartUTC, 'yyyy-mm-ddTHH:MM:SSZ');
     endStr   = datestr(dateEndUTC,   'yyyy-mm-ddTHH:MM:SSZ');
-
+    
     % Prepare query parameters
     queryParams = { ...
         'limit',      num2str(maxDataPoints), ...
         'start_time', startStr, ...
         'end_time',   endStr ...
     };
-
+    
     % No API key needed for PUBLIC feeds
     options = weboptions('ContentType','json','Timeout',30);
-
+    
     try
         rawData = webread(url, queryParams{:}, options);
     catch ME
         error('Error reading data from Adafruit IO: %s', ME.message);
     end
-
+    
     % If empty, return an empty timetable
     if isempty(rawData)
         data = timetable();
         return
     end
-
+    
     % Convert timestamps to datetime (UTC)
     timestampsUTC = datetime({rawData.created_at}, ...
         'InputFormat','yyyy-MM-dd''T''HH:mm:ss''Z''', ...
         'TimeZone','UTC');
-
+    
     % Convert 'value' to double
     values = str2double({rawData.value});
-
+    
     % Create timetable
     data = timetable(timestampsUTC', values', 'VariableNames', {'Value'});
-
+    
     % Filter for desired time window
     data = data(data.Time >= dateStartUTC & data.Time <= dateEndUTC, :);
-
+    
     % Sort ascending
+    data = sortrows(data);
+end
+
+function data = fetchThingspeakData(channelID, fieldNumber, readAPIKey, ...
+                                      dateStartUTC, dateEndUTC, maxDataPoints)
+    url = sprintf('https://api.thingspeak.com/channels/%s/fields/%d.json', channelID, fieldNumber);
+    startStr = datestr(dateStartUTC, 'yyyy-mm-dd HH:MM:SS');
+    endStr   = datestr(dateEndUTC,   'yyyy-mm-dd HH:MM:SS');
+    
+    queryParams = { ...
+        'api_key', readAPIKey, ...
+        'results', num2str(maxDataPoints), ...
+        'start', startStr, ...
+        'end', endStr ...
+    };
+    
+    options = weboptions('ContentType','json','Timeout',30);
+    
+    try
+        result = webread(url, queryParams{:}, options);
+    catch ME
+        error('Error reading data from Thingspeak: %s', ME.message);
+    end
+    
+    if ~isfield(result, 'feeds') || isempty(result.feeds)
+        data = timetable();
+        return
+    end
+    
+    fieldName = sprintf('field%d', fieldNumber);
+    timestampsUTC = datetime({result.feeds.created_at}, ...
+        'InputFormat','yyyy-MM-dd''T''HH:mm:ss''Z''', ...
+        'TimeZone','UTC');
+    values = str2double({result.feeds.(fieldName)});
+    
+    data = timetable(timestampsUTC', values', 'VariableNames', {'Value'});
+    data = data(data.Time >= dateStartUTC & data.Time <= dateEndUTC, :);
     data = sortrows(data);
 end
