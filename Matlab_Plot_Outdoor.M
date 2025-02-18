@@ -1,36 +1,50 @@
-% OUTDOOR 
-% Reads public Adafruit IO feeds for Temperature & Humidity, computes Dew Point,
-% and plots them on dual y-axes. Time is stored in UTC but displayed in CET/CEST.
-% We now convert time to numeric (datenum) so we can manage a manual x-axis
-% with 6-hour vertical lines, day-boundary labels, and bold lines at -1 and -2 days.
+% Reads public Adafruit IO feeds or Thingspeak channel data for Temperature &
+% Humidity, computes Dew Point, and plots them on dual y-axes. 
+% We convert time to numeric (datenum) so we can safely manage 
+% a manual x-axis with 6-hour vertical lines and day-boundary labels.
 
 % -------------------------------
 % STEP 1: DEFINE PARAMETERS
 % -------------------------------
-baseURL = 'https://io.adafruit.com/api/v2';
 
-% Your Adafruit IO username (exactly as shown in your Adafruit IO profile)
-aioUsername = 'x';  % <-- Replace with your username
+% Choose data source: 'adafruit' or 'thingspeak'
+dataSource = 'thingspeak';  % Change to 'thingspeak' to use Thingspeak data
 
-% Feed keys for Temperature and Humidity (must be public)
-temperatureFeedKey = 'outdoor-temperature';  % <-- Replace with your feed key
-humidityFeedKey    = 'outdoor-humidity';     % <-- Replace with your feed key
+if strcmpi(dataSource, 'adafruit')
+    baseURL = 'https://io.adafruit.com/api/v2';
+    aioUsername = 'x';  % <-- Replace with your username
+    temperatureFeedKey = 'outdoor-temperature';  % <-- Replace with your feed key
+    humidityFeedKey    = 'outdoor-humidity';     % <-- Replace with your feed key
+else  % thingspeak
+    thingspeakChannelID = 'x';    % <-- Replace with your Thingspeak Channel ID
+    thingspeakReadAPIKey = 'x';   % <-- Replace with your Thingspeak Read API Key
+    temperatureField = 4;  % Field number for Temperature
+    humidityField    = 5;  % Field number for Humidity
+end
 
-% Number of data points to retrieve
-maxDataPoints = 2500;
+maxDataPoints = 3000;
 
-% Define the time window in UTC
+% 3 days up to "now" in UTC
 dateEndUTC   = datetime('now', 'TimeZone', 'UTC'); 
-dateStartUTC = dateEndUTC - days(3);  % 3 days ago in UTC
+dateStartUTC = dateEndUTC - days(3);
 
 %% -------------------------------
-% STEP 2: FETCH DATA (PUBLIC FEEDS)
+% STEP 2: FETCH DATA
 % -------------------------------
-temperatureDataUTC = fetchAdafruitIOData( ...
-    baseURL, aioUsername, temperatureFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
+if strcmpi(dataSource, 'adafruit')
+    temperatureDataUTC = fetchAdafruitIOData( ...
+        baseURL, aioUsername, temperatureFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
 
-humidityDataUTC = fetchAdafruitIOData( ...
-    baseURL, aioUsername, humidityFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
+    humidityDataUTC = fetchAdafruitIOData( ...
+        baseURL, aioUsername, humidityFeedKey, dateStartUTC, dateEndUTC, maxDataPoints);
+elseif strcmpi(dataSource, 'thingspeak')
+    temperatureDataUTC = fetchThingspeakData( ...
+        thingspeakChannelID, temperatureField, thingspeakReadAPIKey, dateStartUTC, dateEndUTC, maxDataPoints);
+    humidityDataUTC = fetchThingspeakData( ...
+        thingspeakChannelID, humidityField, thingspeakReadAPIKey, dateStartUTC, dateEndUTC, maxDataPoints);
+else
+    error('Unsupported dataSource specified.');
+end
 
 %% -------------------------------
 % STEP 3: VALIDATE & SYNCHRONIZE DATA
@@ -43,52 +57,48 @@ if isempty(humidityDataUTC) || height(humidityDataUTC) == 0
     error('No Humidity data retrieved. Check if your Humidity feed is public and has data.');
 end
 
-% Merge into one timetable (outer join, linear interpolation)
 commonDataUTC = synchronize(temperatureDataUTC, humidityDataUTC, 'union', 'linear');
-
-% Rename columns for clarity
 commonDataUTC.Properties.VariableNames = {'Temperature', 'Humidity'};
 
 %% -------------------------------
 % STEP 4: COMPUTE DEW POINT
 % -------------------------------
-% Using Magnus-Tetens formula
 tempC       = commonDataUTC.Temperature;
 relHumidity = commonDataUTC.Humidity;
 
-a = 17.27;
+a = 17.27; 
 b = 237.7;  % in °C
+% Use max(relHumidity, eps) to avoid taking log of zero or negative values
+gamma = (a.*tempC)./(b+tempC) + log(max(relHumidity, eps)/100);
+dewPointC = (b*gamma)./(a-gamma);
 
-gamma = (a .* tempC) ./ (b + tempC) + log(relHumidity / 100);
-dewPointC = (b * gamma) ./ (a - gamma);
-
-% Add DewPoint as a new column in the timetable
 commonDataUTC.DewPoint = dewPointC;
 
 %% -------------------------------
-% STEP 5: FILTER TIME (OPTIONAL)
+% STEP 5: OPTIONAL FILTER
 % -------------------------------
 commonDataUTC = commonDataUTC(commonDataUTC.Time >= dateStartUTC & ...
                               commonDataUTC.Time <= dateEndUTC, :);
 
 %% -------------------------------
-% STEP 6: CONVERT TIME TO LOCAL (CET/CEST)
+% STEP 6: TIME TO LOCAL
 % -------------------------------
 commonDataUTC.Time.TimeZone = 'Europe/Berlin';
 
 %% -------------------------------
-% STEP 7: CREATE THE PLOT (USING NUMERIC X-AXIS)
+% STEP 7: PLOT (NUMERIC AXIS)
 % -------------------------------
-timeLocal   = commonDataUTC.Time;         % datetime
-timeNum     = datenum(timeLocal);         % numeric days since year 0000
+% 1) Convert time (datetime) -> numeric (datenum):
+timeLocal    = commonDataUTC.Time;   % datetime
+timeNum      = datenum(timeLocal);   % numeric
 
-temperature = commonDataUTC.Temperature;
-humidity    = commonDataUTC.Humidity;
-dewPoint    = commonDataUTC.DewPoint;
+temperature  = commonDataUTC.Temperature;
+humidity     = commonDataUTC.Humidity;
+dewPoint     = commonDataUTC.DewPoint;
 
 figure('Position', [100, 100, 1000, 600], 'Renderer', 'opengl');
 
-% --- LEFT Y-AXIS: Temperature & Dew Point ---
+% -- LEFT Y-AXIS: Temperature & Dew Point --
 yyaxis left
 plot(timeNum, temperature, '-r', 'LineWidth', 2, ...
     'DisplayName','Temperature (°C)', 'Color',[1, 0, 0, 0.7]);
@@ -96,12 +106,12 @@ hold on
 plot(timeNum, dewPoint, '--r', 'LineWidth', 2, ...
     'DisplayName','Dew Point (°C)', 'Color',[1, 0, 0, 0.7]);
 
-ylabel('Temperature / Dew Point (°C)');
+ylabel('Temperatur / Taupunkt (°C)');
 ylim([min([temperature; dewPoint]) - 2, max([temperature; dewPoint]) + 2]);
-ax = gca; 
+ax = gca;
 ax.YColor = 'r';
 
-% --- RIGHT Y-AXIS: Humidity ---
+% -- RIGHT Y-AXIS: Humidity --
 yyaxis right
 plot(timeNum, humidity, '-b', 'LineWidth', 2, ...
     'DisplayName','Humidity (%)', 'Color',[0, 0, 1, 0.7]);
@@ -109,9 +119,8 @@ ylabel('Humidity (%)');
 
 humMin = min(humidity, [], 'omitnan');
 humMax = max(humidity, [], 'omitnan');
-defaultHumMin = 0;
-defaultHumMax = 100;
-
+defaultHumMin = 40;
+defaultHumMax = 60;
 newYmin = min(defaultHumMin, humMin);
 newYmax = max(defaultHumMax, humMax);
 ylim([newYmin, newYmax]);
@@ -122,67 +131,64 @@ grid on;
 
 set(ax, 'FontSize', 12, 'LineWidth', 1.5);
 
-%% --- DEFINE X-AXIS: 3 DAYS, 6-HOUR TICKS, DAY BOUNDARIES ---
-% 1) Numeric range: last data => endLocalNum, 3 days earlier => startLocalNum
-endLocalNum   = max(timeNum);
-startLocalNum = endLocalNum - 3;  % 3 days is "3.0" in datenum
+%% --- DEFINE X-AXIS (3 DAYS, 6-HOUR LINES, DAY-BOUNDARY LABELS) ---
+% 2) Convert our startLocal / endLocal to numeric
+%    so we can set x-limits in numeric form
+endLocalNum   = max(timeNum);                  % numeric version of last data
+startLocalNum = endLocalNum - 3;               % 3 days => 3 in datenum units
 
 xlim([startLocalNum, endLocalNum]);
 
-% 2) 6-hour increments => 6/24 = 0.25 days
+% 3) 6-hour increments => 6 hours is 6/24 = 0.25 days
 allTicks_6h_num = (startLocalNum : 0.25 : endLocalNum);
 
-% 3) Day boundaries => +1.0 for each day
+% 4) Day boundaries => 1 day is 1.0 in datenum
 majorTicks_1d_num = [startLocalNum, startLocalNum+1, ...
                      startLocalNum+2, endLocalNum];
 
-% 4) Place a tick at every 6 hours
+% 5) Make the axis show a tick at every 6 hours
 ax.XTick = allTicks_6h_num;
 
-% Assign default labels for every tick
+% By default, let's blank out all tick labels:
 ax.XTickLabel = cellstr( datestr(allTicks_6h_num, 'dd-mmm-yy HH:MM') );
 
-% 5) Re-label day boundaries (optional, already labeled if you want)
-%    If you wish to highlight them:
+% 6) For the day boundaries, we replace with actual labels:
+%    (Use ismembertol to find the index, if necessary, 
+%     or just find exact matches if they're integral days.)
 [~, locMaj] = ismembertol(majorTicks_1d_num, allTicks_6h_num, 1e-8);
+
+% Use datestr(...) to format those day-boundary ticks
 for i = 1:numel(locMaj)
     if locMaj(i) ~= 0
         ax.XTickLabel{locMaj(i)} = datestr(allTicks_6h_num(locMaj(i)), 'dd-mmm-yy HH:MM');
     end
 end
 
-% 6) Vertical grid lines at each 6-hour tick
+% 7) A grid line at each tick => vertical lines every 6 hours
 grid on;
 
-% --- BOLD LINES at current time minus 1 day and minus 2 days ---
+% Bold vertical lines at current time minus 1 day and minus 2 days:
 line1 = endLocalNum - 1;
 line2 = endLocalNum - 2;
 
-% xline is R2018b+; otherwise do plot([line1 line1], ylim, 'k', 'LineWidth', 1)
 xline(line1, 'k', 'LineWidth', 1);
 xline(line2, 'k', 'LineWidth', 1);
 
 %% -------------------------------
-% STEP 8: OPTIONAL - SAVE THE PLOT
+% STEP 8: OPTIONAL - SAVE
 % -------------------------------
-% saveas(gcf, 'Mstein_Outdoor_Plot.png');
+% saveas(gcf, 'Mstein_Indoor_Plot.png');
 
-% -------------------------------
-% LOCAL FUNCTION: fetchAdafruitIOData
+%% -------------------------------
+% LOCAL FUNCTIONS
 % -------------------------------
 function data = fetchAdafruitIOData(baseURL, aioUsername, feedKey, ...
                                     dateStartUTC, dateEndUTC, maxDataPoints)
-    % Build base URL
-    url = sprintf('%s/%s/feeds/%s/data', baseURL, aioUsername, feedKey);
 
-    % Convert dateStartUTC, dateEndUTC to ISO-8601 strings
+    url = sprintf('%s/%s/feeds/%s/data', baseURL, aioUsername, feedKey);
     startStr = datestr(dateStartUTC, 'yyyy-mm-ddTHH:MM:SSZ');
     endStr   = datestr(dateEndUTC,   'yyyy-mm-ddTHH:MM:SSZ');
 
-    % Prepare query parameters
-    % - limit: up to your maxDataPoints
-    % - start_time: earliest time in UTC
-    % - end_time: latest time in UTC
     queryParams = { ...
         'limit',      num2str(maxDataPoints), ...
         'start_time', startStr, ...
@@ -197,26 +203,54 @@ function data = fetchAdafruitIOData(baseURL, aioUsername, feedKey, ...
         error('Error reading data from Adafruit IO: %s', ME.message);
     end
 
-    % If empty, return an empty timetable
     if isempty(rawData)
         data = timetable();
         return
     end
 
-    % Convert timestamps from "YYYY-MM-DDTHH:mm:ssZ" to datetime (UTC)
     timestampsUTC = datetime({rawData.created_at}, ...
         'InputFormat','yyyy-MM-dd''T''HH:mm:ss''Z''', ...
         'TimeZone','UTC');
-
-    % Convert 'value' to double
     values = str2double({rawData.value});
 
-    % Create timetable
     data = timetable(timestampsUTC', values', 'VariableNames', {'Value'});
-
-    % (Optional) Filter again (should already be correct, but just in case)
     data = data(data.Time >= dateStartUTC & data.Time <= dateEndUTC, :);
+    data = sortrows(data);
+end
 
-    % Sort by ascending time
+function data = fetchThingspeakData(channelID, fieldNumber, readAPIKey, ...
+                                      dateStartUTC, dateEndUTC, maxDataPoints)
+    url = sprintf('https://api.thingspeak.com/channels/%s/fields/%d.json', channelID, fieldNumber);
+    startStr = datestr(dateStartUTC, 'yyyy-mm-dd HH:MM:SS');
+    endStr   = datestr(dateEndUTC,   'yyyy-mm-dd HH:MM:SS');
+
+    queryParams = { ...
+        'api_key', readAPIKey, ...
+        'results', num2str(maxDataPoints), ...
+        'start', startStr, ...
+        'end', endStr ...
+    };
+
+    options = weboptions('ContentType','json','Timeout',30);
+
+    try
+        result = webread(url, queryParams{:}, options);
+    catch ME
+        error('Error reading data from Thingspeak: %s', ME.message);
+    end
+
+    if ~isfield(result, 'feeds') || isempty(result.feeds)
+        data = timetable();
+        return
+    end
+
+    fieldName = sprintf('field%d', fieldNumber);
+    timestampsUTC = datetime({result.feeds.created_at}, ...
+        'InputFormat','yyyy-MM-dd''T''HH:mm:ss''Z''', ...
+        'TimeZone','UTC');
+    values = str2double({result.feeds.(fieldName)});
+
+    data = timetable(timestampsUTC', values', 'VariableNames', {'Value'});
+    data = data(data.Time >= dateStartUTC & data.Time <= dateEndUTC, :);
     data = sortrows(data);
 end
