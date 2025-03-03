@@ -18,9 +18,11 @@
 // GPIO 27      RESET       LoRa module reset
 // GPIO 33      DIO0        Interrupt pin (LoRa DIO0)
 
+// Sensor.ino
 #include <Wire.h>
 #include <SPI.h>
 #include <LoRa.h>
+#include "SHTSensor.h"
 #include <esp_sleep.h>
 
 // Define pins for LoRa
@@ -31,36 +33,31 @@
 #define LORA_RST 27
 #define LORA_IRQ 33
 
-// Define analog pin for battery voltage measurement
-#define VOLTAGE_PIN 36  // Choose an available ADC pin on your ESP32
-
-// Voltage divider resistor values (Ohms)
-// R1 connects between the battery positive and the ADC pin.
-// R2 connects between the ADC pin and ground.
-#define R1 33000  // 33 kΩ
-#define R2 10000  // 10 kΩ
-// The divider ratio is: R2 / (R1 + R2) ≈ 10k / 43k ≈ 0.2326
-// The battery voltage is calculated as: 
-//   batteryVoltage = (ADC_voltage) * ((R1 + R2) / R2)
-// where ADC_voltage = (analogRead(VOLTAGE_PIN)/4095.0)*3.3
+// Set to "IN" for Indoor Sensor, "OUT" for Outdoor Sensor
+const String inOrOut = "OUT";
 
 // LoRa settings
 const long frequency = 868300000; // 868.3 MHz
 const int currentSF = 10;         // SF10 for improved range/reliability
-const long currentBW = 125000;    // 125 kHz bandwidth
-const int currentCR = 6;          // Coding Rate 4/6
+const long currentBW = 125000;    // Bandwidth remains at 125 kHz
+const int currentCR = 6;          // Coding Rate set to 4/6
 const int powerdbM = 14;          // Maximum allowed TX power (14 dBm)
 
 // Sending interval in seconds (device sleeps between sends)
-// IMPORTANT: Consider duty cycle restrictions.
+// IMPORTANT: The duty cycle restrictions apply (e.g. if send time = 400ms, send only every 40s).
 const double sendInterval = 40;   // Sleep interval in seconds
 
-// LBT (Listen Before Talk) threshold (dBm)
-const int RSSI_THRESHOLD = -80;
+// LBT (Listen Before Talk) threshold
+const int RSSI_THRESHOLD = -80;   // dBm
+
+SHTSensor sht(SHTSensor::SHT85);
 
 void setup() {
   Serial.begin(115200);
-
+  
+  // Initialize I2C for sensor communication
+  Wire.begin();
+   
   // Initialize LoRa SPI interface and module
   SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_CS);
   LoRa.setPins(LORA_CS, LORA_RST, LORA_IRQ);
@@ -70,15 +67,15 @@ void setup() {
   }
   LoRa.setSyncWord(0x13);
   LoRa.enableCrc();
-  LoRa.setSpreadingFactor(currentSF);
-  LoRa.setSignalBandwidth(currentBW);
-  LoRa.setCodingRate4(currentCR);
-  LoRa.setTxPower(powerdbM);
+  LoRa.setSpreadingFactor(currentSF);   
+  LoRa.setSignalBandwidth(currentBW);  
+  LoRa.setCodingRate4(currentCR);       
+  LoRa.setTxPower(powerdbM); 
   
   // Print LoRa settings for verification
   printLoRaSettings();
   
-  // Listen Before Talk (LBT)
+  // Implement Listen Before Talk (LBT)
   Serial.println("Checking channel before transmission...");
   while (!isChannelClear(RSSI_THRESHOLD)) {
     Serial.print("\tChannel busy (RSSI threshold: ");
@@ -90,16 +87,26 @@ void setup() {
   Serial.print(RSSI_THRESHOLD);
   Serial.println(" dBm). Proceeding to send data.");
   
-  // Read battery voltage using the voltage divider
-  int adcValue = analogRead(VOLTAGE_PIN);
-  float adcVoltage = ((float)adcValue / 4095.0) * 3.3;  // Voltage at ADC pin
-  float batteryVoltage = adcVoltage * ((float)(R1 + R2) / R2);
-  
-  // Prepare the data string to be sent in the format "V:xx.x"
-  String data = "V:" + String(batteryVoltage, 1);
+  // Read sensor data from the SHT85 sensor
+  if (sht.init()) {
+    Serial.println("SHT sensor initialized.");
+  } else {
+    Serial.println("Failed to initialize SHT sensor!");
+  }
+  float temp = 100.0;
+  float hum = 0.0;
+  if (sht.readSample()) {
+    temp = sht.getTemperature();
+    hum = sht.getHumidity();
+  } else {
+    Serial.println("Failed to read from SHT sensor.");
+  }
+
+  // Prepare the data string to be sent
+  String data = inOrOut + String(":T=") + String(temp, 1) + ",H=" + String(hum, 1);
   
   // Send the data packet once
-  unsigned long startTime = millis();
+  unsigned long startTime = millis();    
   LoRa.beginPacket();
   LoRa.print(data);
   LoRa.endPacket();
